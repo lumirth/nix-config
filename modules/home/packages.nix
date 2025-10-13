@@ -1,0 +1,21 @@
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
+{
+  home.packages = with pkgs; [
+    git
+    vim
+    wget
+    htop
+    fd
+    ripgrep
+    fzf
+    bat
+    gh
+    nil
+    nixd
+  ];
+}
