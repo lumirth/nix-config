@@ -1,4 +1,5 @@
-{ pkgs, ... }: {
+{ pkgs, ... }:
+{
   home = {
     stateVersion = "25.05";
     username = "lu";
@@ -17,7 +18,18 @@
       nil
       nixd
       gnupg
+      pinentry_mac
     ];
+  };
+
+  programs.gpg = {
+    enable = true;
+  };
+
+  services.gpg-agent = {
+    enable = true;
+    pinentry.package = pkgs.pinentry_mac;
+    enableSshSupport = true;
   };
 
   programs.fish = {
