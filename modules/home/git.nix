@@ -16,15 +16,29 @@
     };
 
     extraConfig = {
-      # This tells git: "Use SSH for signing, NOT GPG"
-      # (Confusing naming, but gpg.format = "ssh" means "don't use gpg")
+      # Use SSH for commit signing
       gpg.format = "ssh";
-      # Enable local signature verification
       gpg.ssh.allowedSignersFile = "~/.config/git/allowed_signers";
+
+      # Additional Git settings
+      init.defaultBranch = "main";
+      pull.rebase = true;
+      push.autoSetupRemote = true;
+    };
+
+    # Git aliases for common operations
+    aliases = {
+      st = "status";
+      co = "checkout";
+      br = "branch";
+      ci = "commit";
+      unstage = "reset HEAD --";
+      last = "log -1 HEAD";
+      visual = "!gitk";
     };
   };
 
-  # Generate allowed_signers file for local SSH signature verification
+  # Setup allowed_signers file for SSH signature verification
   home.activation.setupAllowedSigners = lib.hm.dag.entryAfter [ "setupSSH" ] ''
     ALLOWED_SIGNERS="$HOME/.config/git/allowed_signers"
     SSH_PUB_KEY="$HOME/.ssh/id_ed25519.pub"
@@ -35,10 +49,11 @@
     # Generate allowed_signers file if SSH key exists
     if [ -f "$SSH_PUB_KEY" ]; then
       echo "Setting up SSH allowed signers for local verification..."
-      echo "65358837+lumirth@users.noreply.github.com $(cat "$SSH_PUB_KEY")" > "$ALLOWED_SIGNERS"
+      echo "65358837+lumirth@users.noreply.github.com $(cat "$SSH_PUB_KEY" | /usr/bin/awk '{print $1" "$2}')" > "$ALLOWED_SIGNERS"
       echo "Created $ALLOWED_SIGNERS"
     else
       echo "Warning: SSH key not found at $SSH_PUB_KEY"
+      echo "Skipping allowed_signers setup"
     fi
   '';
 }

@@ -1,4 +1,11 @@
-{ pkgs, config, ... }: {
+{ pkgs, ... }:
+{
+  imports = [
+    ./modules/darwin/system-settings.nix
+    ./modules/darwin/app-preferences.nix
+    ./modules/darwin/dock.nix
+    ./modules/darwin/touchid-sudo.nix
+  ];
   # Required for Determinate Nix
   nix.enable = false;
 
@@ -7,7 +14,14 @@
   system.primaryUser = "lu";
   nixpkgs.hostPlatform = "aarch64-darwin";
 
-  nix.settings.experimental-features = [ "nix-command" "flakes" ];
+  nix.settings.experimental-features = [
+    "nix-command"
+    "flakes"
+  ];
+  nix.settings.trusted-users = [
+    "root"
+    "lu"
+  ];
 
   # Enable fish at the system level
   programs.fish.enable = true;
@@ -74,9 +88,11 @@
       "bambu-studio"
       "ollama-app"
       "lm-studio"
+      "cursor"
+      "netnewswire"
     ];
 
-    brews = [];
+    brews = [ ];
 
     masApps = {
       "CotEditor" = 1024640650;
@@ -93,6 +109,7 @@
       "Testflight" = 899247664;
       "Xcode" = 497799835;
       "PastePal" = 1503446680;
+      "Reeder" = 6475002485;
     };
   };
 }

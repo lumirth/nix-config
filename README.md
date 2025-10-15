@@ -1,4 +1,3 @@
-
 This is my nix config. Nix is a colossal pain in the ass, and only barely worth the trouble. But barely worth the trouble is still worth it, so here we are.
 
 ```zsh
@@ -12,4 +11,11 @@ git clone https://github.com/lu-mbp/nix-config.git ~/.config/nix
 sudo nix run github:LnL7/nix-darwin/master#darwin-rebuild \
   -- switch \
   --flake ~/.config/nix#lu-mbp
+
+# add ssh to keychain
+ssh-add --apple-use-keychain /Users/lu/.ssh/id_ed25519
+
+# for devenv
+echo "trusted-users = root $(whoami)" | sudo tee -a /etc/nix/nix.custom.conf
+
 ```

@@ -5,6 +5,8 @@
     ./modules/home/shell.nix
     ./modules/home/git.nix
     ./modules/home/ssh.nix
+    ./modules/home/fonts.nix
+    ./modules/home/apps/rectangle-pro.nix
   ];
 
   home = {
