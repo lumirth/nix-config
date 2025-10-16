@@ -112,6 +112,7 @@
       "Reeder" = 6475002485;
       "News Explorer" = 1032670789;
       "GoodLinks" = 1474335294;
+      "Ulysses" = 1225570693;
     };
   };
 }
