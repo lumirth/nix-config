@@ -111,7 +111,7 @@
       "PastePal" = 1503446680;
       "Reeder" = 6475002485;
       "News Explorer" = 1032670789;
-      "Anybox" = 1593408455;
+      "GoodLinks" = 1474335294;
     };
   };
 }
