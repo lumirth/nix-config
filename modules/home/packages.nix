@@ -20,5 +20,8 @@
     unar # Archive extraction
     jq # JSON processor
     yq # YAML processor
+
+    # Additional packages
+    bitwarden-cli
   ];
 }

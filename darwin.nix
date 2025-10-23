@@ -1,7 +1,7 @@
 { pkgs, ... }:
 {
   imports = [
-    ./modules/darwin/system-settings.nix
+    # ./modules/darwin/system-settings.nix
     ./modules/darwin/app-preferences.nix
     ./modules/darwin/dock.nix
     ./modules/darwin/touchid-sudo.nix
@@ -90,6 +90,9 @@
       "lm-studio"
       "cursor"
       "netnewswire"
+      "jetbrains-toolbox"
+      "android-studio"
+      "obsidian"
     ];
 
     brews = [ ];

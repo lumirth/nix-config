@@ -19,12 +19,6 @@
     persistent-others = [
       "/Users/lu/Downloads"
     ];
-
-    # Additional dock preferences
-    wvous-tl-corner = 1; # Top-left hot corner: Mission Control
-    wvous-tr-corner = 1; # Top-right hot corner: Mission Control
-    wvous-bl-corner = 1; # Bottom-left hot corner: Mission Control
-    wvous-br-corner = 1; # Bottom-right hot corner: Mission Control
   };
 
   # Simple activation script to handle missing apps gracefully
