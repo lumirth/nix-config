@@ -13,6 +13,7 @@
   system.stateVersion = 6;
   system.primaryUser = "lu";
   nixpkgs.hostPlatform = "aarch64-darwin";
+  nixpkgs.config.allowUnfree = true;
 
   nix.settings.experimental-features = [
     "nix-command"

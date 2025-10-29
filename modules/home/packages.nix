@@ -23,5 +23,7 @@
 
     # Additional packages
     bitwarden-cli
+    infisical
+    cursor-cli
   ];
 }
