@@ -24,34 +24,34 @@
     "lu"
   ];
 
-  # Enable fish at the system level
-  programs.fish.enable = true;
+  # Enable zsh at the system level
+  programs.zsh.enable = true;
 
   # Define the user (required for home-manager)
   users.users.lu = {
     name = "lu";
     home = "/Users/lu";
-    shell = pkgs.fish;
+    shell = pkgs.zsh;
   };
 
-  # Add fish to /etc/shells
-  environment.shells = [ pkgs.fish ];
+  # Add zsh to /etc/shells
+  environment.shells = [ pkgs.zsh ];
 
   # Activation script to actually change the user's shell
   # Note: nix-darwin's users.users.*.shell doesn't change existing users
   system.activationScripts.extraActivation.text = ''
-    echo "Setting shell for user lu to fish..."
+    echo "Setting shell for user lu to zsh..."
 
-    FISH_PATH="/run/current-system/sw/bin/fish"
+    ZSH_PATH="/run/current-system/sw/bin/zsh"
     CURRENT_SHELL=$(dscl . -read /Users/lu UserShell 2>/dev/null | awk '{print $2}')
 
-    if [ "$CURRENT_SHELL" != "$FISH_PATH" ]; then
+    if [ "$CURRENT_SHELL" != "$ZSH_PATH" ]; then
       echo "Current shell: $CURRENT_SHELL"
-      echo "Changing to: $FISH_PATH"
-      dscl . -create /Users/lu UserShell "$FISH_PATH"
+      echo "Changing to: $ZSH_PATH"
+      dscl . -create /Users/lu UserShell "$ZSH_PATH"
       echo "Shell changed successfully. You may need to restart your terminal."
     else
-      echo "Shell is already set to fish"
+      echo "Shell is already set to zsh"
     fi
   '';
 
@@ -103,7 +103,7 @@
       "Microsoft Word" = 462054704;
       "Microsoft Excel" = 462058435;
       "Microsoft Powerpoint" = 462062816;
-      "Barbee" = 1548711022;
+      # "Barbee" = 1548711022;
       "Dropover" = 1355679052;
       "Hand Mirror" = 1502839586;
       "Folder Quick Look" = 6753110395;

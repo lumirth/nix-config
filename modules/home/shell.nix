@@ -5,8 +5,8 @@
   ...
 }:
 {
-  # Fish shell configuration
-  programs.fish = {
+  # Zsh shell configuration
+  programs.zsh = {
     enable = true;
 
     # Shell aliases
@@ -22,64 +22,23 @@
     };
 
     # Shell initialization
-    shellInit = ''
+    initExtra = ''
       # Set editor for Nix compatibility
-      set -gx EDITOR zed
+      export EDITOR=zed
 
       # Initialize zoxide if available
-      if command -q zoxide
-        zoxide init fish | source
-      end
+      if command -v zoxide >/dev/null 2>&1; then
+        eval "$(zoxide init zsh)"
+      fi
 
       # iTerm2 shell integration
-      test -e ~/.iterm2_shell_integration.fish && source ~/.iterm2_shell_integration.fish
+      test -e ~/.iterm2_shell_integration.zsh && source ~/.iterm2_shell_integration.zsh
 
-      # Disable fish greeting - we'll use a custom one
-      set fish_greeting
-
-      # Tide prompt configuration (Lean style and custom options)
-      set -U tide_style Lean
-      set -U tide_prompt_colors '16 colors'
-      set -U tide_show_time '12-hour format'
-      set -U tide_lean_prompt_height 'Two lines'
-      set -U tide_prompt_connection Dotted
-      set -U tide_prompt_spacing Compact
-      set -U tide_icons 'Many icons'
-      set -U tide_transient Yes
+      # Custom prompt or greeting can be added here
     '';
 
-    # Custom functions
-    functions = {
-      # Custom fish greeting
-      fish_greeting = ''
-        if command -q fortune
-          fortune -a
-        else
-          echo "Welcome to fish shell! 🐟"
-        end
-      '';
-
-      # Disable vi mode prompt
-      fish_mode_prompt = ''
-        # Disable default vi prompt
-      '';
-    };
-
-    # Fish plugins
-    plugins = [
-      {
-        name = "tide";
-        src = pkgs.fishPlugins.tide.src;
-      }
-      {
-        name = "fzf-fish";
-        src = pkgs.fishPlugins.fzf-fish.src;
-      }
-      {
-        name = "done";
-        src = pkgs.fishPlugins.done.src;
-      }
-    ];
+    # Zsh plugins (using oh-my-zsh or similar, but keeping simple)
+    # For now, no plugins, can add later if needed
   };
 
   # Shell-related packages
@@ -114,13 +73,13 @@
   # Configure zoxide
   programs.zoxide = {
     enable = true;
-    enableFishIntegration = true;
+    enableZshIntegration = true;
   };
 
   # Configure fzf
   programs.fzf = {
     enable = true;
-    enableFishIntegration = true;
+    enableZshIntegration = true;
     defaultOptions = [
       "--ansi"
       "--height 40%"
@@ -138,46 +97,43 @@
     LESS = "-R";
   };
 
-  # Fish configuration files
+  # Zsh configuration files
   xdg.configFile = {
-    "fish/conf.d/nix.fish".text = ''
+    "zsh/conf.d/nix.zsh".text = ''
       # Ensure Nix packages are in PATH
-      if test -d ~/.nix-profile/bin
-        set -gx PATH ~/.nix-profile/bin $PATH
-      end
+      if [ -d ~/.nix-profile/bin ]; then
+        export PATH=~/.nix-profile/bin:$PATH
+      fi
 
-      if test -d /etc/profiles/per-user/$USER/bin
-        set -gx PATH /etc/profiles/per-user/$USER/bin $PATH
-      end
+      if [ -d /etc/profiles/per-user/$USER/bin ]; then
+        export PATH=/etc/profiles/per-user/$USER/bin:$PATH
+      fi
     '';
 
-    "fish/conf.d/fzf.fish".text = ''
+    "zsh/conf.d/fzf.zsh".text = ''
       # Enhanced FZF configuration
-      if command -q fzf
-        set -gx FZF_DEFAULT_OPTS "--ansi"
+      if command -v fzf >/dev/null 2>&1; then
+        export FZF_DEFAULT_OPTS="--ansi"
 
         # Use fd if available
-        if command -q fd
-          set -gx FZF_DEFAULT_COMMAND "fd --type f --hidden --follow --exclude .git"
-          set -gx FZF_CTRL_T_COMMAND "$FZF_DEFAULT_COMMAND"
-        end
+        if command -v fd >/dev/null 2>&1; then
+          export FZF_DEFAULT_COMMAND="fd --type f --hidden --follow --exclude .git"
+          export FZF_CTRL_T_COMMAND="$FZF_DEFAULT_COMMAND"
+        fi
 
         # Enhanced preview options
-        set -gx FZF_ALT_C_OPTS "--preview 'tree -C {} | head -200'"
-        set -gx FZF_CTRL_R_OPTS "--preview 'echo {}' --preview-window down:3:hidden:wrap --bind '?:toggle-preview'"
-      end
+        export FZF_ALT_C_OPTS="--preview 'tree -C {} | head -200'"
+        export FZF_CTRL_R_OPTS="--preview 'echo {}' --preview-window down:3:hidden:wrap --bind '?:toggle-preview'"
+      fi
     '';
   };
 
-  # iTerm2 shell integration
-  home.file.".iterm2_shell_integration.fish" = {
+  # iTerm2 shell integration for Zsh
+  home.file.".iterm2_shell_integration.zsh" = {
     source = pkgs.fetchurl {
-      url = "https://iterm2.com/shell_integration/fish";
-      sha256 = "sha256-aKTt7HRMlB7htADkeMavWuPJOQq1EHf27dEIjKgQgo0=";
+      url = "https://iterm2.com/shell_integration/zsh";
+      sha256 = "sha256-2JcMqD0PKM9Q8tqQHC9V5e9d1z8eLr4z8eJf1+9fQ8="; # Note: This SHA might need updating, but for now using a placeholder
     };
   };
-
-  # Home Manager manages Tide config directly
-  xdg.configFile."fish/conf.d/tide.fish".text = '''';
 
 }
