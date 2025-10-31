@@ -14,4 +14,7 @@
     username = "lu";
     homeDirectory = "/Users/lu";
   };
+
+  # Backup existing files instead of clobbering them
+  home-manager.backupFileExtension = "backup";
 }
