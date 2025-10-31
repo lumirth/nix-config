@@ -31,9 +31,6 @@
         eval "$(zoxide init zsh)"
       fi
 
-      # iTerm2 shell integration
-      test -e ~/.iterm2_shell_integration.zsh && source ~/.iterm2_shell_integration.zsh
-
       # Custom prompt or greeting can be added here
     '';
 
@@ -128,12 +125,12 @@
     '';
   };
 
-  # iTerm2 shell integration for Zsh
-  home.file.".iterm2_shell_integration.zsh" = {
-    source = pkgs.fetchurl {
-      url = "https://iterm2.com/shell_integration/zsh";
-      sha256 = "sha256-2JcMqD0PKM9Q8tqQHC9V5e9d1z8eLr4z8eJf1+9fQ8="; # Note: This SHA might need updating, but for now using a placeholder
-    };
-  };
+  # iTerm2 shell integration for Zsh - commented out to fix build
+  # home.file.".iterm2_shell_integration.zsh" = {
+  #   source = pkgs.fetchurl {
+  #     url = "https://iterm2.com/shell_integration/zsh";
+  #     sha256 = "sha256-2JcMqD0PKM9Q8tqQHC9V5e9d1z8eLr4z8eJf1+9fQ8="; # Note: This SHA might need updating, but for now using a placeholder
+  #   };
+  # };
 
 }
