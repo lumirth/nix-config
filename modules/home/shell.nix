@@ -22,7 +22,7 @@
     };
 
     # Shell initialization
-    initExtra = ''
+    initContent = ''
       # Set editor for Nix compatibility
       export EDITOR=zed
 
