@@ -94,6 +94,7 @@
       "jetbrains-toolbox"
       "android-studio"
       "obsidian"
+      "orbstack"
     ];
 
     brews = [ ];
