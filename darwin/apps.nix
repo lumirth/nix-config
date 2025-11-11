@@ -1,6 +1,30 @@
-# Declarative app-specific defaults for tools that expose `defaults` domains.
-_:
+# Consolidated application preferences and Dock configuration
+{ config, ... }:
 {
+  # Dock configuration
+  system.defaults.dock = {
+    autohide = true;
+    autohide-delay = 0.0;
+    autohide-time-modifier = 0.15;
+    largesize = 64;
+    magnification = true;
+    mru-spaces = false;
+    persistent-apps = [
+      { app = "/Applications/Raycast.app"; }
+      { app = "/Applications/Arc.app"; }
+      { app = "/Applications/Zed.app"; }
+      { app = "/Applications/iTerm.app"; }
+      { app = "/Applications/Obsidian.app"; }
+    ];
+    persistent-others = [
+      "${config.users.users.${config.system.primaryUser}.home}/Downloads"
+    ];
+    show-recents = false;
+    show-process-indicators = true;
+    tilesize = 48;
+  };
+
+  # Application-specific preferences
   system.defaults.CustomUserPreferences = {
     "com.lwouis.alt-tab-macos" = {
       hideWindowlessApps = true;

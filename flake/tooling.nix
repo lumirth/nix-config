@@ -11,8 +11,8 @@
       treefmt = {
         projectRootFile = "flake.nix";
 
-        # Nix formatting with nixpkgs-fmt
-        programs.nixpkgs-fmt.enable = true;
+        # Nix formatting with nixfmt (RFC-166)
+        programs.nixfmt.enable = true;
 
         # Linting for anti-patterns
         programs.statix.enable = true;
