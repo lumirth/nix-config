@@ -1,84 +1,124 @@
 # lu's nix-darwin configuration
 
-This repository contains my macOS configuration built with nix-darwin, home-manager, and Determinate Nix. Everything is declarative: the same `darwin-rebuild switch --flake ~/.config/nix#lu-mbp` command applies macOS defaults, Homebrew apps, CLI tooling, dotfiles, and Nix daemon settings.
+This repo is a flakes-first macOS configuration powered by Determinate Nix, nix-darwin, home-manager, nix-homebrew, and sops-nix. Flake composition is handled by **flake-parts**, with reusable overlays, devshells, and CI checks defined in `flake/`.
 
 ## Prerequisites
 
-- A macOS host with Xcode Command Line Tools.
-- Determinate Nix (handles the daemon and provides flakes out of the box):
+- macOS with Xcode Command Line Tools installed.
+- Determinate Nix (installs the daemon + flakes support):
 
   ```bash
   curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install
   ```
 
-## Cloning and applying the configuration
+- Infisical CLI (Homebrew formula `infisical/tap/infisical`) to hydrate the Age private key.
+
+## Getting started
 
 ```bash
 git clone https://github.com/lu-mbp/nix-config ~/.config/nix
 cd ~/.config/nix
-darwin-rebuild switch --flake .#lu-mbp
+
+# Optional but recommended: enter the devshell (nix, sops, age, nixd, statix, etc.)
+nix develop
+
+# 1) Hydrate the Age private key from Infisical (see “Secrets” below)
+./bin/infisical-bootstrap-sops
+
+# 2) Apply system configuration (nix-darwin)
+sudo darwin-rebuild switch --flake .#lu-mbp
+
+# 3) Apply user configuration (home-manager)
+nix run github:nix-community/home-manager -- switch --flake .#lu@lu-mbp
+
+# Optional one-liner (after secrets are set up)
+./bin/infisical-bootstrap-sops \\
+  && sudo darwin-rebuild switch --flake .#lu-mbp \\
+  && nix run github:nix-community/home-manager -- switch --flake .#lu@lu-mbp \\
+  && ~/bin/bootstrap-ssh.sh
 ```
 
-`darwin-rebuild` does not need `sudo` because Determinate already manages the daemon. Re-run the same command after making any change.
+Both commands are declarative; the system tier still needs `sudo darwin-rebuild` because macOS activation scripts touch privileged paths, but Determinate manages the daemon configuration automatically.
 
 ## Repository layout
 
 ```
-~/.config/nix/
-├── flake.nix
+~/.config/nix
+├── flake.nix                # flake-parts entrypoint
+├── flake/                   # per-system packages, devshell, checks, darwin/home outputs
+├── overlays/                # custom overlays (e.g., claude-code-acp)
+├── lib/                     # helpers (future home for host builders/utilities)
 ├── hosts/
-│   └── lu-mbp/default.nix    # Host composition (nix-darwin + HM + nix-homebrew)
+│   └── lu-mbp/
+│       ├── system/          # nix-darwin host module (system tier)
+│       └── home/            # host-scoped home-manager entrypoint
 ├── modules/
-│   ├── system.nix            # nix-darwin host settings + Determinate config
-│   ├── homebrew.nix          # Declarative Homebrew/MAS apps
-│   ├── darwin/               # system.defaults, Dock, app prefs, Touch ID
-│   └── home/                 # home-manager modules (packages, shell, git, ssh…)
-└── users/
-    └── lu/home.nix          # User entry point importing modules/home/*.nix
+│   ├── system.nix           # nix-darwin base config + Determinate settings
+│   ├── darwin/              # macOS defaults, Dock, Touch ID, etc.
+│   └── home/                # reusable home-manager modules (packages, shell, git, ssh…)
+├── secrets/                 # sops-encrypted blobs (Rectangle Pro licenses, etc.)
+└── bin/infisical-bootstrap-sops
 ```
 
-Key modules:
+### Key modules
 
-- `modules/system.nix` – imports macOS preference modules and sets Determinate `determinate-nix.customSettings`.
-- `modules/homebrew.nix` – Homebrew casks, brews, and App Store apps.
-- `modules/home/packages.nix` – All CLI tooling and fonts.
-- `modules/home/shell.nix`, `git.nix`, `ssh.nix`, etc. – Individual concerns for home-manager.
+- `modules/system.nix` – system defaults + Determinate Nix wiring (`nix.enable = false`, `/etc/nix/nix.custom.conf`).
+- `modules/darwin/*` – Finder/Dock defaults, app preferences, Touch ID, etc.
+- `modules/home/*` – granular HM modules (packages, shell, git, ssh, fonts, Rectangle Pro secrets, sops glue).
+- `overlays/default.nix` – custom packages exposed as `pkgs.<name>` (currently `claude-code-acp`).
 
-## SSH bootstrap helper
+## Secrets workflow (sops-nix + Infisical)
 
-`home-manager` now generates an Ed25519 key automatically on the first rebuild and reminds you to add it to the macOS Keychain. Run the helper below only to connect that key to GitHub (auth + uploading auth/signing keys):
+1. Secrets live encrypted under `secrets/`, tracked in git.
+2. The Age private key stays out of repo. Store it in Infisical (`SOPS_AGE_KEY` in workspace `f3d4ff0d-b521-4f8a-bd99-d110e70714ac`, env `prod`, path `/macos`). `home.activation.bootstrapAgeKey` now runs `bin/infisical-bootstrap-sops` automatically when the key file is missing, but you can still bootstrap manually:
 
-```bash
-~/bin/bootstrap-ssh.sh
-```
+   ```bash
+   ./bin/infisical-bootstrap-sops
+   # optional overrides:
+   # INFISICAL_SECRET_NAME, INFISICAL_ENVIRONMENT, INFISICAL_PATH, INFISICAL_PROJECT_ID
+   ```
 
-The script (installed by `modules/home/ssh.nix`) performs a browser-based `gh auth login` if needed and registers both auth + signing keys with GitHub. It assumes the key already exists from the `home.activation` hook.
+   The script runs `infisical secrets get … --plain --silent` and writes `~/.config/sops/age/keys.txt`.
 
-## Encrypted secrets (sops-nix + Infisical)
+3. Home Manager modules (via `modules/home/sops.nix`) expect that key for decrypting secrets declared in `modules/home/apps/rectangle-pro.nix`, etc.
 
-- Secrets (Rectangle Pro licenses today) live as encrypted blobs under `secrets/`.
-- The Age private key stays outside of git—store it in Infisical as `SOPS_AGE_KEY` (or any name you like). The CLI’s `infisical secrets get` command supports `--env`, `--path`, and `--plain` flags so we can pull just the value we need ([Infisical CLI docs](https://infisical.com/docs/cli/commands/secrets#get)).
-- After logging in to Infisical, run:
+4. SSH keys are declaratively managed the same way. Encrypt your long-lived keypair under `secrets/ssh/` (private + public) so every host gets the same identity:
+
+   ```bash
+   mkdir -p secrets/ssh
+   nix shell nixpkgs#sops -c sops secrets/ssh/id_ed25519       # paste your private key (or generate with ssh-keygen first)
+   nix shell nixpkgs#sops -c sops secrets/ssh/id_ed25519.pub   # paste the matching .pub
+   git add secrets/ssh
+   ```
+
+   During `home-manager switch`, sops-nix writes the decrypted files to `~/.ssh/` and the helper script `~/bin/bootstrap-ssh.sh` can upload them to GitHub. The build fails early if either encrypted file is missing.
+
+5. To edit any secret, use `sops` directly so encryption remains intact:
+
+   ```bash
+   nix shell nixpkgs#sops -c sops secrets/rectangle-pro/580977.padl
+   ```
+
+**Quirk:** sops-nix cannot call Infisical during evaluation. Hydrate the Age key (step 2) before running `darwin-rebuild` or `home-manager switch` on a new host/CI runner. `.infisical.json` remains git-ignored.
+
+## Validation, formatting, and CI
+
+- `nix fmt` – runs `nixpkgs-fmt` via flake-parts `formatter`.
+- `nix flake check` – builds `darwinConfigurations.lu-mbp`, runs fmt check, and ensures secrets stay encrypted.
+- GitHub Actions can run:
 
   ```bash
-  ./bin/infisical-bootstrap-sops
+  nix run determinate.systems/flake-checker-action
+  nix build .#darwinConfigurations.lu-mbp.system --no-link
   ```
-
-  The helper fetches the `SOPS_AGE_KEY` secret (defaults to env `prod`, path `/macos`) and writes it to `~/.config/sops/age/keys.txt`, which is what `sops-nix` expects for decrypting secrets described in `modules/home/apps/rectangle-pro.nix`. Override `INFISICAL_ENVIRONMENT`, `INFISICAL_PATH`, `INFISICAL_SECRET_NAME`, or `INFISICAL_PROJECT_ID` before running the script if your Infisical layout differs.
-
-- To edit an encrypted file, use `sops` directly so it re-encrypts in place:
-
-  ```bash
-  nix shell nixpkgs#sops -c sops secrets/rectangle-pro/580977.padl
-  ```
-
-  The module definitions rely on `inputs.sops-nix.homeManagerModules.sops`, which mirrors the upstream instructions for integrating sops-nix with Home Manager ([sops-nix README](https://github.com/Mic92/sops-nix#configure-home-manager-via-homenix-flakes)).
-- **Quirk:** Neither nix-darwin nor sops-nix can call Infisical directly during evaluation—`sops.age.keyFile` must point at a real file on disk. If the bootstrap step hasn’t written `~/.config/sops/age/keys.txt` yet, `darwin-rebuild` will fail before Home Manager runs. Always hydrate the key (or copy it from Infisical manually) before running any rebuilds on a new host.
 
 ## Daily commands
 
-- Update inputs: `nix flake update` followed by `darwin-rebuild switch --flake .#lu-mbp`.
-- Test changes without applying: `darwin-rebuild dry-build --flake .#lu-mbp`.
-- Roll back: `darwin-rebuild switch --rollback`.
+- Apply system changes: `darwin-rebuild switch --flake .#lu-mbp`
+- Apply user changes: `home-manager switch --flake .#lu@lu-mbp`
+- Preview changes: `darwin-rebuild dry-build --flake .#lu-mbp`
+- Reformat/check: `nix fmt`, `nix flake check`
+- Update inputs: `nix flake update`
+- Roll back: `darwin-rebuild switch --rollback`
 
-All configuration lives here—avoid imperative `nix-env`/`nix profile`/manual Homebrew installs. Instead, edit the appropriate module and rebuild.
+Everything is declarative—avoid `nix-env`, `nix profile install`, or ad-hoc `defaults write`. GUI apps go through nix-homebrew + casks, CLI tools go through `modules/home/packages.nix`, and secrets stay in `secrets/` encrypted by sops-nix.

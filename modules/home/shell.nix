@@ -1,11 +1,9 @@
-{
-  config,
-  lib,
-  pkgs,
-  ...
+{ config
+, lib
+, pkgs
+, ...
 }:
 {
-  # Zsh shell configuration
   programs.zsh = {
     enable = true;
 
@@ -20,19 +18,6 @@
       lttt = "ls --tree -D -L 4 -I \"cache|log|logs|node_modules|vendor\"";
       py = "python";
     };
-
-    # Shell initialization
-    initContent = ''
-      # Set editor for Nix compatibility
-      export EDITOR=zed
-
-      # Initialize zoxide if available
-      if command -v zoxide >/dev/null 2>&1; then
-        eval "$(zoxide init zsh)"
-      fi
-
-      # Custom prompt or greeting can be added here
-    '';
 
     # Zsh plugins (using oh-my-zsh or similar, but keeping simple)
     # For now, no plugins, can add later if needed
@@ -70,44 +55,5 @@
     PAGER = "less";
     LESS = "-R";
   };
-
-  # Zsh configuration files
-  xdg.configFile = {
-    "zsh/conf.d/nix.zsh".text = ''
-      # Ensure Nix packages are in PATH
-      if [ -d ~/.nix-profile/bin ]; then
-        export PATH=~/.nix-profile/bin:$PATH
-      fi
-
-      if [ -d /etc/profiles/per-user/$USER/bin ]; then
-        export PATH=/etc/profiles/per-user/$USER/bin:$PATH
-      fi
-    '';
-
-    "zsh/conf.d/fzf.zsh".text = ''
-      # Enhanced FZF configuration
-      if command -v fzf >/dev/null 2>&1; then
-        export FZF_DEFAULT_OPTS="--ansi"
-
-        # Use fd if available
-        if command -v fd >/dev/null 2>&1; then
-          export FZF_DEFAULT_COMMAND="fd --type f --hidden --follow --exclude .git"
-          export FZF_CTRL_T_COMMAND="$FZF_DEFAULT_COMMAND"
-        fi
-
-        # Enhanced preview options
-        export FZF_ALT_C_OPTS="--preview 'tree -C {} | head -200'"
-        export FZF_CTRL_R_OPTS="--preview 'echo {}' --preview-window down:3:hidden:wrap --bind '?:toggle-preview'"
-      fi
-    '';
-  };
-
-  # iTerm2 shell integration for Zsh - commented out to fix build
-  # home.file.".iterm2_shell_integration.zsh" = {
-  #   source = pkgs.fetchurl {
-  #     url = "https://iterm2.com/shell_integration/zsh";
-  #     sha256 = "sha256-2JcMqD0PKM9Q8tqQHC9V5e9d1z8eLr4z8eJf1+9fQ8="; # Note: This SHA might need updating, but for now using a placeholder
-  #   };
-  # };
 
 }

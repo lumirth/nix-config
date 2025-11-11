@@ -1,24 +1,29 @@
-{
-  config,
-  lib,
-  pkgs,
-  ...
+{ config
+, lib
+, pkgs
+, ...
 }:
+let
+  sshPubSecretName = "ssh/id_ed25519.pub";
+  hasManagedSshKey = config.sops.secrets ? sshPubSecretName;
+  sshPubKeyPath = "${config.home.homeDirectory}/.ssh/id_ed25519.pub";
+  allowedSigners = "${config.home.homeDirectory}/.config/git/allowed_signers";
+in
 {
   programs.git = {
     enable = true;
     userName = "lumirth";
     userEmail = "65358837+lumirth@users.noreply.github.com";
 
-    signing = {
-      key = "~/.ssh/id_ed25519.pub";
+    signing = lib.mkIf hasManagedSshKey {
+      key = sshPubKeyPath;
       signByDefault = true;
     };
 
     extraConfig = {
       # Use SSH for commit signing
       gpg.format = "ssh";
-      gpg.ssh.allowedSignersFile = "~/.config/git/allowed_signers";
+      gpg.ssh.allowedSignersFile = allowedSigners;
 
       # Additional Git settings
       init.defaultBranch = "main";
@@ -38,22 +43,18 @@
     };
   };
 
-  # Setup allowed_signers file for SSH signature verification
-  home.activation.setupAllowedSigners = lib.hm.dag.entryAfter [ "setupSSH" ] ''
-    ALLOWED_SIGNERS="$HOME/.config/git/allowed_signers"
-    SSH_PUB_KEY="$HOME/.ssh/id_ed25519.pub"
+  home.activation.setupAllowedSigners = lib.mkIf hasManagedSshKey (
+    lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+      ALLOWED_SIGNERS='${allowedSigners}'
+      SSH_PUB_FILE='${config.sops.secrets."${sshPubSecretName}".path}'
 
-    # Create directory if it doesn't exist
-    mkdir -p "$(dirname "$ALLOWED_SIGNERS")"
-
-    # Generate allowed_signers file if SSH key exists
-    if [ -f "$SSH_PUB_KEY" ]; then
-      echo "Setting up SSH allowed signers for local verification..."
-      echo "65358837+lumirth@users.noreply.github.com $(cat "$SSH_PUB_KEY" | /usr/bin/awk '{print $1" "$2}')" > "$ALLOWED_SIGNERS"
-      echo "Created $ALLOWED_SIGNERS"
-    else
-      echo "Warning: SSH key not found at $SSH_PUB_KEY"
-      echo "Skipping allowed_signers setup"
-    fi
-  '';
+      run mkdir -p "$(dirname "$ALLOWED_SIGNERS")"
+      PUB_KEY="$(${pkgs.coreutils}/bin/awk '{print $1" "$2}' "$SSH_PUB_FILE")"
+      cat >"$ALLOWED_SIGNERS" <<EOF
+${config.programs.git.userEmail or "65358837+lumirth@users.noreply.github.com"} $PUB_KEY
+EOF
+      chmod 600 "$ALLOWED_SIGNERS"
+      noteEcho "Updated $ALLOWED_SIGNERS for SSH signing"
+    ''
+  );
 }

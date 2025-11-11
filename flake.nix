@@ -1,32 +1,26 @@
 {
-  description = "Clean macOS configuration with nix-darwin and home-manager";
+  description = "Clean macOS configuration with nix-darwin, home-manager, and sops-nix";
 
   inputs = {
-    # Nixpkgs - the main package repository
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
 
-    # nix-darwin - macOS system configuration
     nix-darwin = {
       url = "github:LnL7/nix-darwin";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
-    # home-manager - user environment configuration
     home-manager = {
       url = "github:nix-community/home-manager";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
-    # Determinate Systems - declarative Nix settings on macOS
     determinate = {
       url = "github:DeterminateSystems/determinate";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
-    # nix-homebrew - declarative Homebrew management
     nix-homebrew.url = "github:zhaofengli/nix-homebrew";
 
-    # Homebrew taps for declarative management
     homebrew-core = {
       url = "github:homebrew/homebrew-core";
       flake = false;
@@ -36,38 +30,33 @@
       flake = false;
     };
 
-    # sops-nix - encrypted secrets management
     sops-nix = {
       url = "github:Mic92/sops-nix";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+
+    flake-parts.url = "github:hercules-ci/flake-parts";
   };
 
   outputs =
-    inputs@{
-      self,
-      nixpkgs,
-      nix-darwin,
-      determinate,
-      ...
-    }:
-    let
-      system = "aarch64-darwin";
-      hosts = {
-        "lu-mbp" = ./hosts/lu-mbp;
+    inputs@{ self, flake-parts, ... }:
+    flake-parts.lib.mkFlake
+      {
+        inherit inputs;
+        specialArgs = { inherit self; };
+      }
+      {
+        systems = [ "aarch64-darwin" ];
+
+        imports = [
+          ./flake/darwin.nix
+          ./flake/packages.nix
+          ./flake/checks.nix
+          ./flake/devshell.nix
+        ];
+
+        flake = {
+          overlays.default = import ./overlays/default.nix;
+        };
       };
-    in
-    {
-      darwinConfigurations = builtins.mapAttrs (
-        hostName: hostModule:
-        nix-darwin.lib.darwinSystem {
-          inherit system;
-          specialArgs = { inherit inputs; };
-          modules = [
-            determinate.darwinModules.default
-            hostModule
-          ];
-        }
-      ) hosts;
-    };
 }

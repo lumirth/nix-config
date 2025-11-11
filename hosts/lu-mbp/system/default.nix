@@ -1,10 +1,14 @@
-{ inputs, config, ... }:
+{ inputs
+, self
+, config
+, ...
+}:
 {
   imports = [
-    inputs.nix-homebrew.darwinModules.nix-homebrew
-    inputs.home-manager.darwinModules.home-manager
-    ../../modules/system.nix
+    ../../../modules/system.nix
   ];
+
+  nixpkgs.overlays = [ self.overlays.default ];
 
   nix-homebrew = {
     enable = true;
@@ -82,12 +86,5 @@
     };
 
     taps = builtins.attrNames config.nix-homebrew.taps;
-  };
-
-  home-manager = {
-    useGlobalPkgs = true;
-    useUserPackages = true;
-    backupFileExtension = "backup";
-    users.lu = import ../../users/lu/home.nix { inherit inputs; };
   };
 }

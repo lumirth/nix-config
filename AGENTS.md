@@ -37,7 +37,7 @@ Do not guess or hallucinate about Nix. Validate all answers using these tools fi
    - CLI tools and packages
    - Shell configuration (zsh, tmux, etc.)
    - Dotfiles and user environment
-   - Integrated with nix-darwin
+   - Applied via `home-manager switch --flake .#lu@lu-mbp` (run via `nix run github:nix-community/home-manager -- switch --flake .#lu@lu-mbp` if the `home-manager` CLI isn’t installed)
 
 3. **Project Tier (devenv)**
    - Per-project development environments
@@ -53,31 +53,34 @@ Do not guess or hallucinate about Nix. Validate all answers using these tools fi
 - **Nix Settings:** Determinate's nix-darwin module (via `determinate.darwinModules.default`)
 - **Important:** `nix.enable = false;` because Determinate manages Nix directly
 
+> **CLI note:** The repo doesn’t pin a global `home-manager` binary. When instructions mention `home-manager switch`, either install `home-manager` or run `nix run github:nix-community/home-manager -- switch --flake ...`. System rebuilds require `sudo darwin-rebuild ...` because macOS activation touches privileged paths.
+
 ---
 
 ## Repository Structure
 
 ```
 /Users/lu/.config/nix/
-├── flake.nix                    # Main entry point (defines hosts via flake outputs)
-├── flake.lock                   # Locked dependency versions (updated with `nix flake update`)
+├── flake.nix                    # flake-parts entry point
+├── flake/                       # per-system pkgs, devshell, checks, output wiring
+├── overlays/                    # custom package overlays (e.g. claude-code-acp)
 ├── hosts/
-│   └── lu-mbp/default.nix       # Host composition (imports modules + HM + nix-homebrew)
+│   └── lu-mbp/
+│       ├── system/              # nix-darwin host module (imports modules/system.nix)
+│       └── home/                # host-scoped home-manager entrypoint
 ├── modules/
-│   ├── system.nix               # nix-darwin host config + Determinate settings
-│   ├── homebrew.nix             # Declarative Homebrew/MAS management
-│   ├── darwin/                  # system.defaults, Dock, app preferences, Touch ID
-│   └── home/                    # home-manager modules (packages, shell, git, ssh, fonts…)
-└── users/
-    └── lu/
-        └── home.nix             # User-specific home-manager entry point
+│   ├── system.nix               # Determinate config + shared macOS defaults
+│   ├── darwin/                  # system.defaults.*, Dock, Touch ID, app prefs
+│   └── home/                    # home-manager modules (packages, shell, git, ssh…)
+├── secrets/                     # sops-encrypted blobs (Rectangle Pro licenses, etc.)
+└── bin/infisical-bootstrap-sops # fetches Age key from Infisical into ~/.config/sops/age/keys.txt
 ```
 
 `modules/home/` contains:
 - `packages.nix` – complete CLI + font set (referenced by other modules)
-- `shell.nix`, `git.nix`, `ssh.nix`, `fonts.nix`, `apps/…` – single-responsibility modules imported by `users/lu/home.nix`
+- `shell.nix`, `git.nix`, `ssh.nix`, `fonts.nix`, `apps/…` – single-responsibility modules imported by `hosts/lu-mbp/home/default.nix`
 
-`hosts/lu-mbp/default.nix` composes those modules with `inputs.home-manager` and `inputs.nix-homebrew`, so edit it when you need host-specific wiring (extra taps, new users, etc.).
+`hosts/lu-mbp/system/default.nix` wires nix-darwin + nix-homebrew and imports shared modules. Home Manager now runs via `homeConfigurations` (i.e. `home-manager switch --flake .#lu@lu-mbp`), not through nix-darwin.
 
 ---
 
@@ -130,7 +133,7 @@ Do not guess or hallucinate about Nix. Validate all answers using these tools fi
 **Process:**
 1. Edit `/Users/lu/.config/nix/modules/home/packages.nix`
 2. Add package to `home.packages` list under `with pkgs;`
-3. Run `darwin-rebuild switch --flake /Users/lu/.config/nix#lu-mbp`
+3. Run `home-manager switch --flake /Users/lu/.config/nix#lu@lu-mbp`
 
 **Example structure** (verify details with mcp-nixos):
 ```nix
@@ -144,19 +147,19 @@ home.packages = with pkgs; [
 
 ### 2. Add a GUI Application (Homebrew Cask)
 
-**File to edit:** `modules/homebrew.nix`
+**File to edit:** `hosts/lu-mbp/system/default.nix` (the `homebrew` block)
 
 **Before you answer:**
 - Use mcp-nixos to verify the cask name is correct
 
 **Process:**
-1. Edit `/Users/lu/.config/nix/modules/homebrew.nix`
-2. Add to the `casks` list
+1. Edit `/Users/lu/.config/nix/hosts/lu-mbp/system/default.nix`
+2. Add the cask (or MAS entry) to the corresponding list
 3. Run `darwin-rebuild switch --flake /Users/lu/.config/nix#lu-mbp`
 
 **Example structure** (verify details with mcp-nixos):
 ```nix
-# In /Users/lu/.config/nix/modules/homebrew.nix
+# In /Users/lu/.config/nix/hosts/lu-mbp/system/default.nix
 homebrew = {
   enable = true;
   casks = [
@@ -193,7 +196,7 @@ homebrew = {
 **Process:**
 1. Edit `/Users/lu/.config/nix/modules/home/shell.nix`
 2. Modify shell programs configuration
-3. Run `darwin-rebuild switch --flake /Users/lu/.config/nix#lu-mbp`
+3. Run `home-manager switch --flake /Users/lu/.config/nix#lu@lu-mbp`
 
 **Important:** Shell configuration options change. Use context7 to verify current syntax.
 
@@ -210,6 +213,7 @@ homebrew = {
 cd /Users/lu/.config/nix
 nix flake update
 darwin-rebuild switch --flake .#lu-mbp
+home-manager switch --flake .#lu@lu-mbp
 ```
 
 ### 6. Bootstrap SSH + GitHub (when needed)
@@ -245,18 +249,19 @@ Document any deviations or additional scopes in your change summary so future as
 ### Applying Configuration Changes
 
 ```bash
-# Main rebuild command (from anywhere)
-darwin-rebuild switch --flake /Users/lu/.config/nix#lu-mbp
+# System tier (macOS + Homebrew + Determinate)
+sudo darwin-rebuild switch --flake /Users/lu/.config/nix#lu-mbp
 
-# Or from within the config directory
-cd /Users/lu/.config/nix
-darwin-rebuild switch --flake .#lu-mbp
+# User tier (Home Manager: dotfiles, CLI pkgs, secrets)
+nix run github:nix-community/home-manager -- switch --flake /Users/lu/.config/nix#lu@lu-mbp
 
-# Dry run (see what will change without applying)
+# Dry runs
 darwin-rebuild dry-build --flake /Users/lu/.config/nix#lu-mbp
+home-manager build --flake /Users/lu/.config/nix#lu@lu-mbp
 
-# Rollback to previous generation
-darwin-rebuild switch --rollback
+# Validation / formatting
+nix flake check        # runs fmt + builds darwin config
+nix fmt                # aliases nixpkgs-fmt via flake formatter
 ```
 
 ### Running Temporary Commands
@@ -303,7 +308,7 @@ Never suggest these commands. Always direct users to edit configuration files in
 
 3. **All configuration lives in `/Users/lu/.config/nix/`**. Do not suggest editing `/etc/nix/` files directly.
 
-4. **Single rebuild command applies everything:** system settings, packages, Homebrew, shell config, and Nix settings.
+4. **Two declarative commands manage the machine:** use `sudo darwin-rebuild switch --flake .#lu-mbp` for system state and `nix run github:nix-community/home-manager -- switch --flake .#lu@lu-mbp` (or a locally installed `home-manager` CLI) for the user environment.
 
 5. **Imperative package management is forbidden.** Never recommend `nix profile install`, `nix-env -i`, or similar.
 
@@ -319,7 +324,7 @@ Never suggest these commands. Always direct users to edit configuration files in
 
 11. **VALIDATION IS REQUIRED:** Every package name, configuration option, and Nix function must be validated with MCP servers before suggesting it. Do not guess.
 
-12. **Secrets workflow:** Encrypted assets live under `secrets/` via sops-nix. The Age private key is stored in Infisical and must be materialized to `~/.config/sops/age/keys.txt` (e.g., by running `bin/infisical-bootstrap-sops`, which wraps `infisical secrets get ... --plain --silent` per the [Infisical CLI docs](https://infisical.com/docs/cli/commands/secrets#get)). sops-nix cannot fetch from Infisical directly, so any rebuild on a fresh host will fail until the key file exists. Never commit `.infisical.json` or plaintext secrets.
+12. **Secrets workflow:** Encrypted assets live under `secrets/` via sops-nix. The Age private key is provided by Infisical (`SOPS_AGE_KEY` in workspace `f3d4ff0d-b521-4f8a-bd99-d110e70714ac`, env `prod`, path `/macos`). `bin/infisical-bootstrap-sops` wraps `infisical secrets get … --plain --silent` to hydrate `~/.config/sops/age/keys.txt`, and `modules/home/sops.nix` adds a `home.activation.bootstrapAgeKey` hook so this runs automatically if the file is missing. SSH auth/signing keys are also managed via sops (encrypted files in `secrets/ssh/{id_ed25519,id_ed25519.pub}`), which Home Manager copies into `~/.ssh/` before `~/bin/bootstrap-ssh.sh` pushes them to GitHub. Never commit `.infisical.json` or plaintext secrets.
 
 12. **DO NOT HALLUCINATE:** If an MCP server says something doesn't exist or cannot be validated, it doesn't exist. Say so explicitly.
 
@@ -333,7 +338,7 @@ CLI utilities, development tools, language runtimes, system tools.
 
 **Verify with mcp-nixos before suggesting a package name.**
 
-### Packages for `modules/homebrew.nix` (Homebrew)
+### Packages for `hosts/*/homebrew` blocks (Homebrew)
 
 GUI applications, browsers, macOS-specific apps, anything with a graphical interface.
 
@@ -403,7 +408,7 @@ darwin-rebuild switch --flake .#lu-mbp
 | Task | File | Use MCP Server |
 |------|------|----------------|
 | Add CLI tool | `modules/home/packages.nix` | mcp-nixos ✓ |
-| Add GUI app | `modules/homebrew.nix` | mcp-nixos ✓ |
+| Add GUI app | `hosts/lu-mbp/system/default.nix` (`homebrew` block) | mcp-nixos ✓ |
 | Configure Dock | `modules/system.nix` | mcp-nixos ✓ |
 | Configure Finder | `modules/system.nix` | mcp-nixos ✓ |
 | Configure shell | `modules/home/shell.nix` | context7 ✓ |

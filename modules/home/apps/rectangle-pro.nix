@@ -9,8 +9,6 @@ in
     mkdir -p '${rectangleDir}'
   '';
 
-  sops.age.keyFile = lib.mkDefault "${config.home.homeDirectory}/.config/sops/age/keys.txt";
-
   sops.secrets."rectangle-pro-padl" = {
     format = "binary";
     sopsFile = "${secretsDir}/580977.padl";

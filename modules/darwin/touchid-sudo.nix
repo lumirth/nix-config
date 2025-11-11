@@ -1,7 +1,7 @@
-{ pkgs, ... }:
+{ ... }:
 {
-  environment.etc."pam.d/sudo_local".text = ''
-    # sudo_local survives system updates; include pam_tid for Touch ID auth
-    auth       sufficient     pam_tid.so
-  '';
+  security.pam.services.sudo_local = {
+    enable = true;
+    touchIdAuth = true;
+  };
 }
