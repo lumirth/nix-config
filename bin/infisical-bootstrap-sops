@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Fetch the sops-nix Age key from Infisical and write it to
+# ~/.config/sops/age/keys.txt so home-manager/sops-nix can decrypt secrets.
+
+if ! command -v infisical >/dev/null 2>&1; then
+  echo "error: Infisical CLI not found in PATH. Install via 'brew install infisical/tap/infisical'." >&2
+  exit 1
+fi
+
+SECRET_NAME="${INFISICAL_SECRET_NAME:-SOPS_AGE_KEY}"
+INFISICAL_ENVIRONMENT="${INFISICAL_ENVIRONMENT:-prod}"
+INFISICAL_PATH="${INFISICAL_PATH:-/macos}"
+INFISICAL_PROJECT_ID="${INFISICAL_PROJECT_ID:-}"
+KEY_FILE="${HOME}/.config/sops/age/keys.txt"
+KEY_DIR="$(dirname "$KEY_FILE")"
+
+mkdir -p "$KEY_DIR"
+TMP_FILE="$(mktemp)"
+trap 'rm -f "$TMP_FILE"' EXIT
+
+CMD=(infisical secrets get "$SECRET_NAME" --env "$INFISICAL_ENVIRONMENT" --path "$INFISICAL_PATH" --plain --silent)
+if [[ -n "$INFISICAL_PROJECT_ID" ]]; then
+  CMD+=(--projectId "$INFISICAL_PROJECT_ID")
+fi
+
+if ! "${CMD[@]}" >"$TMP_FILE"; then
+  echo "error: failed to fetch '$SECRET_NAME' from Infisical" >&2
+  exit 1
+fi
+
+KEY_CONTENT="$(tr -d '\r' <"$TMP_FILE")"
+if [[ -z "$KEY_CONTENT" ]]; then
+  echo "error: secret '$SECRET_NAME' is empty" >&2
+  exit 1
+fi
+
+printf "%s\n" "$KEY_CONTENT" >"$TMP_FILE"
+chmod 600 "$TMP_FILE"
+mv "$TMP_FILE" "$KEY_FILE"
+trap - EXIT
+
+echo "✓ wrote Age key to $KEY_FILE (secret '$SECRET_NAME', env '$INFISICAL_ENVIRONMENT', path '$INFISICAL_PATH')"

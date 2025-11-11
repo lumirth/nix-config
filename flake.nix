@@ -35,35 +35,39 @@
       url = "github:homebrew/homebrew-cask";
       flake = false;
     };
+
+    # sops-nix - encrypted secrets management
+    sops-nix = {
+      url = "github:Mic92/sops-nix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
-  outputs = inputs@{
-    self,
-    nixpkgs,
-    nix-darwin,
-    determinate,
-    ...
-  }:
-  let
-    system = "aarch64-darwin";
-    hosts = {
-      "lu-mbp" = ./hosts/lu-mbp;
+  outputs =
+    inputs@{
+      self,
+      nixpkgs,
+      nix-darwin,
+      determinate,
+      ...
+    }:
+    let
+      system = "aarch64-darwin";
+      hosts = {
+        "lu-mbp" = ./hosts/lu-mbp;
+      };
+    in
+    {
+      darwinConfigurations = builtins.mapAttrs (
+        hostName: hostModule:
+        nix-darwin.lib.darwinSystem {
+          inherit system;
+          specialArgs = { inherit inputs; };
+          modules = [
+            determinate.darwinModules.default
+            hostModule
+          ];
+        }
+      ) hosts;
     };
-  in
-  {
-    darwinConfigurations =
-      builtins.mapAttrs
-        (
-          hostName: hostModule:
-          nix-darwin.lib.darwinSystem {
-            inherit system;
-            specialArgs = { inherit inputs; };
-            modules = [
-              determinate.darwinModules.default
-              hostModule
-            ];
-          }
-        )
-        hosts;
-  };
 }

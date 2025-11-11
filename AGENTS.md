@@ -319,6 +319,8 @@ Never suggest these commands. Always direct users to edit configuration files in
 
 11. **VALIDATION IS REQUIRED:** Every package name, configuration option, and Nix function must be validated with MCP servers before suggesting it. Do not guess.
 
+12. **Secrets workflow:** Encrypted assets live under `secrets/` via sops-nix. The Age private key is stored in Infisical and must be materialized to `~/.config/sops/age/keys.txt` (e.g., by running `bin/infisical-bootstrap-sops`, which wraps `infisical secrets get ... --plain --silent` per the [Infisical CLI docs](https://infisical.com/docs/cli/commands/secrets#get)). sops-nix cannot fetch from Infisical directly, so any rebuild on a fresh host will fail until the key file exists. Never commit `.infisical.json` or plaintext secrets.
+
 12. **DO NOT HALLUCINATE:** If an MCP server says something doesn't exist or cannot be validated, it doesn't exist. Say so explicitly.
 
 ---

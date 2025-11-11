@@ -37,4 +37,5 @@ result-*
 # Secrets (just in case)
 *.key
 *.pem
-secrets/
+.infisical.json
+data/rectangle-pro/

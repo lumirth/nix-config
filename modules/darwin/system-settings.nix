@@ -1,11 +1,33 @@
-# Placeholder for macOS system defaults. Add options under `system.defaults`
-# when you are ready to manage them declaratively (see GUIDE.md for examples).
+# Declarative macOS defaults validated against nix-darwin options.
 { ... }:
 {
-  # Example structure:
-  # system.defaults = {
-  #   NSGlobalDomain = {
-  #     KeyRepeat = 2;
-  #   };
-  # };
+  system.defaults = {
+    NSGlobalDomain = {
+      AppleShowAllFiles = true;
+      AppleShowAllExtensions = true;
+      InitialKeyRepeat = 15;
+      KeyRepeat = 2;
+      NSAutomaticCapitalizationEnabled = false;
+      NSAutomaticPeriodSubstitutionEnabled = false;
+      NSAutomaticQuoteSubstitutionEnabled = false;
+      NSAutomaticSpellingCorrectionEnabled = false;
+    };
+
+    finder = {
+      AppleShowAllExtensions = true;
+      AppleShowAllFiles = true;
+      FXDefaultSearchScope = "SCcf";
+      FXPreferredViewStyle = "Nlsv";
+      ShowPathbar = true;
+      ShowStatusBar = true;
+      _FXSortFoldersFirst = true;
+    };
+
+    screencapture = {
+      disable-shadow = true;
+      location = "~/Pictures/Screenshots";
+      show-thumbnail = false;
+      type = "png";
+    };
+  };
 }

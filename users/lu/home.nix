@@ -1,6 +1,7 @@
-{ ... }:
+{ inputs, ... }:
 {
   imports = [
+    inputs.sops-nix.homeManagerModules.sops
     ../../modules/home/packages.nix
     ../../modules/home/shell.nix
     ../../modules/home/git.nix
