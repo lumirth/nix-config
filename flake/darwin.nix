@@ -1,7 +1,8 @@
-{ self
-, inputs
-, lib
-, ...
+{
+  self,
+  inputs,
+  lib,
+  ...
 }:
 let
   hosts = {
@@ -12,51 +13,34 @@ let
       homeModule = ../hosts/lu-mbp/home;
     };
   };
-
-  mkPkgs =
-    system:
-    import inputs.nixpkgs {
-      inherit system;
-      overlays = [ self.overlays.default ];
-      config.allowUnfree = true;
-    };
 in
 {
   flake = {
-    darwinConfigurations = lib.mapAttrs
-      (
-        hostName:
-        { system, module, ... }:
-        inputs.nix-darwin.lib.darwinSystem {
-          inherit system;
-          specialArgs = { inherit inputs self; };
-          modules = [
-            inputs.determinate.darwinModules.default
-            inputs.nix-homebrew.darwinModules.nix-homebrew
-            module
-          ];
-        }
-      )
-      hosts;
-
-    homeConfigurations = lib.mapAttrs'
-      (
-        hostName:
-        { system
-        , user
-        , homeModule
-        , ...
-        }:
-        lib.nameValuePair "${user}@${hostName}" (
-          inputs.home-manager.lib.homeManagerConfiguration {
-            pkgs = mkPkgs system;
-            extraSpecialArgs = { inherit inputs self; };
-            modules = [
-              homeModule
-            ];
+    darwinConfigurations = lib.mapAttrs (
+      hostName:
+      {
+        system,
+        module,
+        user,
+        homeModule,
+        ...
+      }:
+      inputs.nix-darwin.lib.darwinSystem {
+        inherit system;
+        specialArgs = { inherit inputs self; };
+        modules = [
+          inputs.determinate.darwinModules.default
+          inputs.nix-homebrew.darwinModules.nix-homebrew
+          inputs.home-manager.darwinModules.home-manager
+          module
+          {
+            home-manager.useGlobalPkgs = true;
+            home-manager.useUserPackages = true;
+            home-manager.extraSpecialArgs = { inherit inputs self; };
+            home-manager.users.${user} = homeModule;
           }
-        )
-      )
-      hosts;
+        ];
+      }
+    ) hosts;
   };
 }

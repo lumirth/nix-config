@@ -35,6 +35,11 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
+    treefmt-nix = {
+      url = "github:numtide/treefmt-nix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
     flake-parts.url = "github:hercules-ci/flake-parts";
   };
 
@@ -48,10 +53,20 @@
       {
         systems = [ "aarch64-darwin" ];
 
+        perSystem =
+          { system, ... }:
+          {
+            _module.args.pkgs = import inputs.nixpkgs {
+              inherit system;
+              overlays = [ self.overlays.default ];
+              config.allowUnfree = true;
+            };
+          };
+
         imports = [
+          inputs.treefmt-nix.flakeModule
           ./flake/darwin.nix
-          ./flake/packages.nix
-          ./flake/checks.nix
+          ./flake/tooling.nix
           ./flake/devshell.nix
         ];
 

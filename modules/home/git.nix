@@ -1,13 +1,13 @@
-{ config
-, lib
-, pkgs
-, ...
+{
+  config,
+  lib,
+  pkgs,
+  ...
 }:
 let
   sshPubSecretName = "ssh/id_ed25519.pub";
   hasManagedSshKey = config.sops.secrets ? sshPubSecretName;
-  sshPubKeyPath = "${config.home.homeDirectory}/.ssh/id_ed25519.pub";
-  allowedSigners = "${config.home.homeDirectory}/.config/git/allowed_signers";
+  allowedSigners = "${config.xdg.configHome}/git/allowed_signers";
 in
 {
   programs.git = {
@@ -16,7 +16,7 @@ in
     userEmail = "65358837+lumirth@users.noreply.github.com";
 
     signing = lib.mkIf hasManagedSshKey {
-      key = sshPubKeyPath;
+      key = config.sops.secrets."${sshPubSecretName}".path;
       signByDefault = true;
     };
 
@@ -44,17 +44,19 @@ in
   };
 
   home.activation.setupAllowedSigners = lib.mkIf hasManagedSshKey (
-    lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+    lib.hm.dag.entryAfter [ "sops-install-secrets" ] ''
       ALLOWED_SIGNERS='${allowedSigners}'
       SSH_PUB_FILE='${config.sops.secrets."${sshPubSecretName}".path}'
 
+      if [ ! -f "$SSH_PUB_FILE" ]; then
+        warnEcho "sops-nix key $SSH_PUB_FILE not found; skipping allowed_signers update"
+        exit 0
+      fi
+
       run mkdir -p "$(dirname "$ALLOWED_SIGNERS")"
-      PUB_KEY="$(${pkgs.coreutils}/bin/awk '{print $1" "$2}' "$SSH_PUB_FILE")"
-      cat >"$ALLOWED_SIGNERS" <<EOF
-${config.programs.git.userEmail or "65358837+lumirth@users.noreply.github.com"} $PUB_KEY
-EOF
-      chmod 600 "$ALLOWED_SIGNERS"
-      noteEcho "Updated $ALLOWED_SIGNERS for SSH signing"
+      noteEcho "Updating git allowed_signers at $ALLOWED_SIGNERS"
+      ${pkgs.coreutils}/bin/printf "%s %s\n" "${config.programs.git.userEmail}" "$(${pkgs.coreutils}/bin/cat "$SSH_PUB_FILE")" > "$ALLOWED_SIGNERS"
+      run chmod 644 "$ALLOWED_SIGNERS"
     ''
   );
 }

@@ -1,11 +1,8 @@
 # Dock configuration validated via nix-darwin `system.defaults.dock` options.
 { config, lib, ... }:
 let
-  userHome =
-    if lib.hasAttrByPath [ "users" "users" "lu" "home" ] config then
-      config.users.users.lu.home
-    else
-      "/Users/lu";
+  primaryUser = config.system.primaryUser or "lu";
+  userHome = lib.attrByPath [ "users" "users" primaryUser "home" ] config ("/Users/" + primaryUser);
 in
 {
   system.defaults.dock = {

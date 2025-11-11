@@ -11,12 +11,8 @@
           sops
           age
           infisical
-          nixpkgs-fmt
           nil
           nixd
-          statix
-          deadnix
-          shellcheck
         ];
 
         shellHook = ''
