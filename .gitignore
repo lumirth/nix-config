@@ -41,3 +41,6 @@ result-*
 data/rectangle-pro/
 
 tmp/
+
+.kiro/
+.vscode/
