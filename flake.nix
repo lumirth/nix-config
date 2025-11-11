@@ -64,7 +64,6 @@
           };
 
         imports = [
-          inputs.treefmt-nix.flakeModule
           ./flake/darwin.nix
           ./flake/tooling.nix
           ./flake/devshell.nix

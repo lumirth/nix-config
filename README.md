@@ -25,16 +25,12 @@ nix develop
 # 1) Hydrate the Age private key from Infisical (see “Secrets” below)
 ./bin/infisical-bootstrap-sops
 
-# 2) Apply system configuration (nix-darwin)
+# 2) Apply the unified system + home configuration
 sudo darwin-rebuild switch --flake .#lu-mbp
-
-# 3) Apply user configuration (home-manager)
-nix run github:nix-community/home-manager -- switch --flake .#lu@lu-mbp
 
 # Optional one-liner (after secrets are set up)
 ./bin/infisical-bootstrap-sops \\
   && sudo darwin-rebuild switch --flake .#lu-mbp \\
-  && nix run github:nix-community/home-manager -- switch --flake .#lu@lu-mbp \\
   && ~/bin/bootstrap-ssh.sh
 ```
 
@@ -62,7 +58,7 @@ Both commands are declarative; the system tier still needs `sudo darwin-rebuild`
 
 ### Key modules
 
-- `modules/system.nix` – system defaults + Determinate Nix wiring (`nix.enable = false`, `/etc/nix/nix.custom.conf`).
+- `modules/system.nix` – system defaults + Determinate Nix wiring (`nix.enable = false`, `determinate-nix.customSettings` manages `/etc/nix/nix.custom.conf`).
 - `modules/darwin/*` – Finder/Dock defaults, app preferences, Touch ID, etc.
 - `modules/home/*` – granular HM modules (packages, shell, git, ssh, fonts, Rectangle Pro secrets, sops glue).
 - `overlays/default.nix` – custom packages exposed as `pkgs.<name>` (currently `claude-code-acp`).
@@ -70,7 +66,7 @@ Both commands are declarative; the system tier still needs `sudo darwin-rebuild`
 ## Secrets workflow (sops-nix + Infisical)
 
 1. Secrets live encrypted under `secrets/`, tracked in git.
-2. The Age private key stays out of repo. Store it in Infisical (`SOPS_AGE_KEY` in workspace `f3d4ff0d-b521-4f8a-bd99-d110e70714ac`, env `prod`, path `/macos`). `home.activation.bootstrapAgeKey` now runs `bin/infisical-bootstrap-sops` automatically when the key file is missing, but you can still bootstrap manually:
+2. The Age private key stays out of repo. Store it in Infisical (`SOPS_AGE_KEY` in workspace `f3d4ff0d-b521-4f8a-bd99-d110e70714ac`, env `prod`, path `/macos`). Bootstrap manually **before** building (the devshell prints a warning until the key exists):
 
    ```bash
    ./bin/infisical-bootstrap-sops
@@ -80,7 +76,7 @@ Both commands are declarative; the system tier still needs `sudo darwin-rebuild`
 
    The script runs `infisical secrets get … --plain --silent` and writes `~/.config/sops/age/keys.txt`.
 
-3. Home Manager modules (via `modules/home/sops.nix`) expect that key for decrypting secrets declared in `modules/home/apps/rectangle-pro.nix`, etc.
+3. nix-darwin + Home Manager (via `modules/home/sops.nix`) expect that key for decrypting secrets declared in `modules/home/apps/rectangle-pro.nix`, etc.
 
 4. SSH keys are declaratively managed the same way. Encrypt your long-lived keypair under `secrets/ssh/` (private + public) so every host gets the same identity:
 
@@ -91,7 +87,7 @@ Both commands are declarative; the system tier still needs `sudo darwin-rebuild`
    git add secrets/ssh
    ```
 
-   During `home-manager switch`, sops-nix writes the decrypted files to `~/.ssh/` and the helper script `~/bin/bootstrap-ssh.sh` can upload them to GitHub. The build fails early if either encrypted file is missing.
+   During `sudo darwin-rebuild switch --flake .#lu-mbp`, sops-nix writes the decrypted files to `~/.ssh/` and the helper script `~/bin/bootstrap-ssh.sh` can upload them to GitHub. The build fails early if either encrypted file is missing.
 
 5. To edit any secret, use `sops` directly so encryption remains intact:
 
@@ -99,7 +95,7 @@ Both commands are declarative; the system tier still needs `sudo darwin-rebuild`
    nix shell nixpkgs#sops -c sops secrets/rectangle-pro/580977.padl
    ```
 
-**Quirk:** sops-nix cannot call Infisical during evaluation. Hydrate the Age key (step 2) before running `darwin-rebuild` or `home-manager switch` on a new host/CI runner. `.infisical.json` remains git-ignored.
+**Quirk:** sops-nix cannot call Infisical during evaluation. Hydrate the Age key (step 2) before running `sudo darwin-rebuild switch --flake .#lu-mbp` on a new host/CI runner. `.infisical.json` remains git-ignored.
 
 ## Validation, formatting, and CI
 
@@ -114,8 +110,7 @@ Both commands are declarative; the system tier still needs `sudo darwin-rebuild`
 
 ## Daily commands
 
-- Apply system changes: `darwin-rebuild switch --flake .#lu-mbp`
-- Apply user changes: `home-manager switch --flake .#lu@lu-mbp`
+- Apply system + home changes: `sudo darwin-rebuild switch --flake .#lu-mbp`
 - Preview changes: `darwin-rebuild dry-build --flake .#lu-mbp`
 - Reformat/check: `nix fmt`, `nix flake check`
 - Update inputs: `nix flake update`

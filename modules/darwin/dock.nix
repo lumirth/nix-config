@@ -1,23 +1,20 @@
 # Dock configuration validated via nix-darwin `system.defaults.dock` options.
 { config, ... }:
 let
-  primaryUserValue = config.system.primaryUser or "lu";
-  primaryUserName =
-    if builtins.isAttrs primaryUserValue then
-      primaryUserValue.user or (primaryUserValue.username or (primaryUserValue.name or "lu"))
-    else
-      primaryUserValue;
-  userHome =
+  primaryUser =
     let
-      users = config.users.users or { };
+      raw = config.system.primaryUser or "lu";
     in
-    if builtins.isString primaryUserName && builtins.hasAttr primaryUserName users then
+    if builtins.isString raw then raw else (raw.user or (raw.username or (raw.name or "lu")));
+  users = config.users.users or { };
+  userHome =
+    if builtins.hasAttr primaryUser users then
       let
-        cfg = builtins.getAttr primaryUserName users;
+        cfg = builtins.getAttr primaryUser users;
       in
-        cfg.home or "/Users/${primaryUserName}"
+      cfg.home or "/Users/${primaryUser}"
     else
-      "/Users/${primaryUserName}";
+      "/Users/${primaryUser}";
 in
 {
   system.defaults.dock = {

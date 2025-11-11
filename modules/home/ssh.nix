@@ -1,7 +1,8 @@
-{ config
-, lib
-, pkgs
-, ...
+{
+  config,
+  lib,
+  pkgs,
+  ...
 }:
 let
   sshDir = "${config.home.homeDirectory}/.ssh";
@@ -18,7 +19,7 @@ let
     SSH_PUB_KEY="$SSH_DIR/id_ed25519.pub"
 
     if [ ! -f "$SSH_KEY" ] || [ ! -f "$SSH_PUB_KEY" ]; then
-      echo "SSH keypair not found at $SSH_DIR. Run 'home-manager switch' after adding the encrypted secret." >&2
+      echo "SSH keypair not found at $SSH_DIR. Run 'sudo darwin-rebuild switch --flake .#lu-mbp' after adding the encrypted secret." >&2
       exit 1
     fi
 
