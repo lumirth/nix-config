@@ -39,3 +39,5 @@ result-*
 *.pem
 .infisical.json
 data/rectangle-pro/
+
+tmp/
