@@ -1,21 +1,5 @@
 # Dock configuration validated via nix-darwin `system.defaults.dock` options.
 { config, ... }:
-let
-  primaryUser =
-    let
-      raw = config.system.primaryUser or "lu";
-    in
-    if builtins.isString raw then raw else (raw.user or (raw.username or (raw.name or "lu")));
-  users = config.users.users or { };
-  userHome =
-    if builtins.hasAttr primaryUser users then
-      let
-        cfg = builtins.getAttr primaryUser users;
-      in
-      cfg.home or "/Users/${primaryUser}"
-    else
-      "/Users/${primaryUser}";
-in
 {
   system.defaults.dock = {
     autohide = true;
@@ -32,7 +16,7 @@ in
       { app = "/Applications/Obsidian.app"; }
     ];
     persistent-others = [
-      "${userHome}/Downloads"
+      "${config.users.users.${config.system.primaryUser}.home}/Downloads"
     ];
     show-recents = false;
     show-process-indicators = true;
