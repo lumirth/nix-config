@@ -1,7 +1,6 @@
 { pkgs, ... }:
 {
-  home.packages = (
-    with pkgs;
+  home.packages = with pkgs;
     [
       # Version control
       git
@@ -42,6 +41,5 @@
       ghost-cli
       claude-code
       claude-code-acp
-    ]
-  );
+    ];
 }

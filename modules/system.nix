@@ -24,6 +24,7 @@
   system.primaryUser = "lu";
 
   nixpkgs.hostPlatform = "aarch64-darwin";
+  nixpkgs.config.allowUnfree = true;
 
   # Ensure preferred shell is installed system-wide
   programs.zsh.enable = true;

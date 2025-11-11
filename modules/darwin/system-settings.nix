@@ -1,5 +1,5 @@
 # Declarative macOS defaults validated against nix-darwin options.
-{ ... }:
+_:
 {
   system.defaults = {
     NSGlobalDomain = {

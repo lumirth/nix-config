@@ -1,5 +1,5 @@
 # Declarative app-specific defaults for tools that expose `defaults` domains.
-{ ... }:
+_:
 {
   system.defaults.CustomUserPreferences = {
     "com.lwouis.alt-tab-macos" = {

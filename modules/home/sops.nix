@@ -1,8 +1,6 @@
-{
-  config,
-  inputs,
-  lib,
-  ...
+{ config
+, inputs
+, ...
 }:
 let
   ageKeyFile = "${config.home.homeDirectory}/.config/sops/age/keys.txt";

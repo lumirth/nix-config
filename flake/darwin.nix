@@ -1,8 +1,7 @@
-{
-  self,
-  inputs,
-  lib,
-  ...
+{ self
+, inputs
+, lib
+, ...
 }:
 let
   hosts = {
@@ -16,31 +15,32 @@ let
 in
 {
   flake = {
-    darwinConfigurations = lib.mapAttrs (
-      hostName:
-      {
-        system,
-        module,
-        user,
-        homeModule,
-        ...
-      }:
-      inputs.nix-darwin.lib.darwinSystem {
-        inherit system;
-        specialArgs = { inherit inputs self; };
-        modules = [
-          inputs.determinate.darwinModules.default
-          inputs.nix-homebrew.darwinModules.nix-homebrew
-          inputs.home-manager.darwinModules.home-manager
-          module
-          {
-            home-manager.useGlobalPkgs = true;
-            home-manager.useUserPackages = true;
-            home-manager.extraSpecialArgs = { inherit inputs self; };
-            home-manager.users.${user} = homeModule;
-          }
-        ];
-      }
-    ) hosts;
+    darwinConfigurations = lib.mapAttrs
+      (
+        _hostName:
+        { system
+        , module
+        , user
+        , homeModule
+        , ...
+        }:
+        inputs.nix-darwin.lib.darwinSystem {
+          inherit system;
+          specialArgs = { inherit inputs self; };
+          modules = [
+            inputs.determinate.darwinModules.default
+            inputs.nix-homebrew.darwinModules.nix-homebrew
+            inputs.home-manager.darwinModules.home-manager
+            module
+            {
+              home-manager.useGlobalPkgs = true;
+              home-manager.useUserPackages = true;
+              home-manager.extraSpecialArgs = { inherit inputs self; };
+              home-manager.users.${user} = homeModule;
+            }
+          ];
+        }
+      )
+      hosts;
   };
 }
