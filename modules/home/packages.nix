@@ -45,6 +45,20 @@ in
       unar # Archive extraction
       jq # JSON processor
       yq # YAML processor
+      eza
+      zoxide
+      direnv
+      nix-direnv
+      fd
+      ripgrep
+      bat
+      htop
+      tree
+      fortune
+      wget
+      curl
+      nerd-fonts.meslo-lg
+      nerd-fonts.fira-code
 
       # Additional packages
       bitwarden-cli

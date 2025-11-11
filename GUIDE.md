@@ -77,7 +77,7 @@ Your configuration lives in three clear layers:
 
 **Single rebuild command applies all three layers:**
 ```bash
-darwin-rebuild switch --flake ~/.config/darwin
+darwin-rebuild switch --flake ~/.config/nix#lu-mbp
 ```
 
 ### Recommended Tech Stack
@@ -96,17 +96,17 @@ darwin-rebuild switch --flake ~/.config/darwin
 ### Folder Structure
 
 ```
-~/.config/darwin/
+~/.config/nix/
 ├── flake.nix              # Main entry point (see below)
 ├── flake.lock             # Locked dependency versions
 ├── modules/
-│   ├── system.nix         # macOS system settings
-│   ├── packages.nix       # CLI tools and packages
-│   ├── homebrew.nix       # Homebrew GUI apps
-│   └── shell.nix          # Shell configuration (zsh, etc)
+│   ├── system.nix         # nix-darwin host settings + Determinate config
+│   ├── homebrew.nix       # Homebrew GUI apps + MAS titles
+│   ├── darwin/            # system.defaults, Dock, per-app defaults, Touch ID
+│   └── home/              # home-manager modules (packages, shell, git, ssh…)
 └── users/
     └── yourname/
-        └── home.nix       # User-specific home-manager config
+        └── home.nix       # User-specific home-manager config importing modules/home
 ```
 
 ---
@@ -146,45 +146,18 @@ darwin-rebuild switch --flake ~/.config/darwin
       darwinConfigurations."MacBook" = nix-darwin.lib.darwinSystem {
         inherit system;
         modules = [
-          # Add Determinate's module (manages Nix settings declaratively)
           determinate.darwinModules.default
-
-          # Home-manager integration
           home-manager.darwinModules.home-manager
 
-          # Import organized modules
           ./modules/system.nix
-          ./modules/packages.nix
           ./modules/homebrew.nix
-          ./modules/shell.nix
 
-          # Main configuration
-          ({ pkgs, ... }: {
-            # Let Determinate handle Nix installation and configuration
-            nix.enable = false;
-
-            # Declare Nix settings centrally (managed by Determinate)
-            determinate-nix.customSettings = {
-              experimental-features = "nix-command flakes";
-              trusted-substituters = [
-                "https://cache.nixos.org"
-                "https://nix-community.cachix.org"
-              ];
-              trusted-public-keys = [
-                "cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY="
-                "nix-community.cachix.org-1:mB9FSh9qf2dCimDSUo8Zy7bkq5CX+/rkCWyvRCYg3Fs="
-              ];
-              max-jobs = "auto";
-              cores = 0;
+          ({ ... }: {
+            home-manager = {
+              useGlobalPkgs = true;
+              useUserPackages = true;
+              users.${username} = import ./users/${username}/home.nix;
             };
-
-            # macOS version tracking
-            system.stateVersion = 4;
-
-            # Home-manager configuration
-            home-manager.useGlobalPkgs = true;
-            home-manager.useUserPackages = true;
-            home-manager.users.${username} = ./users/${username}/home.nix;
           })
         ];
       };
@@ -196,68 +169,77 @@ darwin-rebuild switch --flake ~/.config/darwin
 
 ```nix
 { pkgs, ... }:
-
 {
-  # Keyboard
-  system.keyboard.enableKeyMapping = true;
-  system.keyboard.remapCapsLockToControl = true;
+  imports = [
+    ./darwin/system-settings.nix
+    ./darwin/app-preferences.nix
+    ./darwin/dock.nix
+    ./darwin/touchid-sudo.nix
+  ];
 
-  # Finder
-  system.defaults.finder.AppleShowAllFiles = true;
-  system.defaults.finder.ShowPathbar = true;
-  system.defaults.finder.ShowStatusBar = true;
+  nix.enable = false;
+  determinate-nix.customSettings = {
+    experimental-features = "nix-command flakes";
+    trusted-users = "root yourname";
+    trusted-substituters = "https://cache.nixos.org https://nix-community.cachix.org";
+    trusted-public-keys = ''
+      cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
+      nix-community.cachix.org-1:mB9FSh9qf2dCimDSUo8Zy7bkq5CX+/rkCWyvRCYg3Fs=
+    '';
+  };
 
-  # Dock
-  system.defaults.dock.autohide = true;
-  system.defaults.dock.minimize-to-application = true;
-  system.defaults.dock.mru-spaces = false;
+  system.stateVersion = 6;
+  system.primaryUser = "yourname";
+  nixpkgs.hostPlatform = "aarch64-darwin";
+  nixpkgs.config.allowUnfree = true;
 
-  # Screenshots
-  system.defaults.screencapture.location = "/tmp";
+  programs.zsh.enable = true;
+  environment.shells = [ pkgs.zsh ];
 
-  # Other sensible defaults
-  system.defaults.NSGlobalDomain.AppleInterfaceStyle = "Dark";
-  system.defaults.NSGlobalDomain.KeyRepeat = 2;
+  users.users.yourname = {
+    home = "/Users/yourname";
+    shell = pkgs.zsh;
+  };
+
+  system.activationScripts.extraActivation.text = ''
+    echo "Ensuring zsh is the login shell for yourname"
+    ZSH_PATH="/run/current-system/sw/bin/zsh"
+    CURRENT=$(dscl . -read /Users/yourname UserShell 2>/dev/null | awk '{print $2}')
+    if [ "$CURRENT" != "$ZSH_PATH" ]; then
+      dscl . -create /Users/yourname UserShell "$ZSH_PATH"
+    fi
+  '';
+
+  system.activationScripts.activateSettings.text = ''
+    /System/Library/PrivateFrameworks/SystemAdministration.framework/Resources/activateSettings -u
+  '';
 }
 ```
 
-### modules/packages.nix
+### modules/home/packages.nix
 
 ```nix
-{ pkgs, ... }:
-
-{
-  # CLI tools available globally
-  home-manager.users.yourname = {
-    home.packages = with pkgs; [
-      # Essential
-      git
-      curl
-      wget
-
-      # Development
-      vim
-      neovim
-      tmux
-
-      # Search/Filter
-      ripgrep
-      fd
-      fzf
-      jq
-
-      # Utilities
-      htop
-      tree
-      bat
-
-      # Languages (if used daily)
-      nodejs
-      python3
-
-      # Add more as needed
-    ];
+{ pkgs, lib, ... }:
+let
+  customTool = pkgs.buildNpmPackage {
+    pname = "my-cli";
+    version = "0.1.0";
+    src = pkgs.fetchFromGitHub { owner = "example"; repo = "my-cli"; rev = "..."; hash = "sha256-..."; };
+    npmDepsHash = "sha256-...";
+    meta = { description = "Pinned CLI"; license = lib.licenses.mit; };
   };
+in {
+  home.packages =
+    (with pkgs; [
+      git gh
+      python3 pipx
+      vim devenv cachix nodejs_22
+      nil nixd
+      ripgrep fd eza zoxide direnv nix-direnv
+      jq yq bat htop tree wget curl
+      nerd-fonts.fira-code
+    ])
+    ++ [ customTool ];
 }
 ```
 
@@ -269,64 +251,74 @@ darwin-rebuild switch --flake ~/.config/darwin
 {
   homebrew = {
     enable = true;
-    onActivation.cleanup = "uninstall";
+    onActivation.cleanup = "zap";
 
-    taps = [
-      "homebrew/cask"
-      "homebrew/cask-fonts"
-    ];
-
-    # Command-line tools (these could go in home.packages instead)
-    brews = [
-      "cowsay"
-    ];
-
-    # GUI applications (must use Homebrew, Nix doesn't manage macOS apps well)
     casks = [
       "raycast"
-      "slack"
-      "visual-studio-code"
-      "kitty"  # or alacritty
-      "rectangle"
-      "font-jetbrains-mono"
+      "rectangle-pro"
+      "arc"
+      "anki"
+      "obsidian"
     ];
+
+    brews = [ ];
+
+    masApps = {
+      "Xcode" = 497799835;
+      "GoodLinks" = 1474335294;
+    };
   };
 }
 ```
 
-### modules/shell.nix
+### modules/home/shell.nix
 
 ```nix
-{ ... }:
-
 {
-  home-manager.users.yourname = {
-    programs.zsh = {
-      enable = true;
-      enableCompletion = true;
-      enableAutosuggestions = true;
-      syntaxHighlighting.enable = true;
-
-      shellAliases = {
-        ll = "ls -lah";
-        gs = "git status";
-        gc = "git commit";
-        ga = "git add";
-      };
-
-      # Your .zshrc contents here
+  config,
+  lib,
+  pkgs,
+  ...
+}:
+{
+  programs.zsh = {
+    enable = true;
+    shellAliases = {
+      clip = "pbcopy";
+      ls = "eza --group-directories-first";
+      ll = "ls --git -l";
+      py = "python";
     };
-
-    programs.starship = {
-      enable = true;
-      # Prompt configuration
-    };
-
-    programs.tmux = {
-      enable = true;
-      # Tmux configuration
-    };
+    initContent = ''
+      export EDITOR=zed
+      if command -v zoxide >/dev/null 2>&1; then
+        eval "$(zoxide init zsh)"
+      fi
+    '';
   };
+
+  programs.direnv = {
+    enable = true;
+    nix-direnv.enable = true;
+  };
+
+  programs.zoxide.enable = true;
+  programs.fzf = {
+    enable = true;
+    enableZshIntegration = true;
+    defaultCommand = "fd --type f --hidden --follow --exclude .git";
+  };
+
+  home.sessionVariables = {
+    EDITOR = "zed";
+    PAGER = "less";
+  };
+
+  xdg.configFile."zsh/conf.d/fzf.zsh".text = ''
+    if command -v fzf >/dev/null 2>&1; then
+      export FZF_DEFAULT_COMMAND="fd --type f --hidden --follow --exclude .git"
+    fi
+  '';
 }
 ```
 
@@ -336,25 +328,53 @@ darwin-rebuild switch --flake ~/.config/darwin
 { pkgs, ... }:
 
 {
+  imports = [
+    ../../modules/home/packages.nix
+    ../../modules/home/shell.nix
+    ../../modules/home/git.nix
+    ../../modules/home/ssh.nix
+    ../../modules/home/fonts.nix
+  ];
+
   home.stateVersion = "25.05";
 
   home.homeDirectory = "/Users/yourname";
   home.username = "yourname";
 
-  # Packages already in modules/packages.nix are inherited
+  # Use additional modules for truly user-specific bits
+}
+```
 
-  programs.git = {
+### hosts/my-macbook/default.nix
+
+```nix
+{ inputs, config, ... }:
+{
+  imports = [
+    inputs.nix-homebrew.darwinModules.nix-homebrew
+    inputs.home-manager.darwinModules.home-manager
+    ../../modules/system.nix
+    ../../modules/homebrew.nix
+  ];
+
+  nix-homebrew = {
     enable = true;
-    userName = "Your Name";
-    userEmail = "you@example.com";
-
-    extraConfig = {
-      pull.rebase = true;
-      init.defaultBranch = "main";
+    user = "my-user";
+    autoMigrate = true;
+    taps = {
+      "homebrew/homebrew-core" = inputs.homebrew-core;
+      "homebrew/homebrew-cask" = inputs.homebrew-cask;
     };
+    mutableTaps = false;
   };
 
-  # More user-specific configuration here
+  homebrew.taps = builtins.attrNames config.nix-homebrew.taps;
+
+  home-manager = {
+    useGlobalPkgs = true;
+    useUserPackages = true;
+    users."my-user" = import ../../users/my-user/home.nix;
+  };
 }
 ```
 
@@ -366,7 +386,7 @@ darwin-rebuild switch --flake ~/.config/darwin
 
 **Step 1: Edit your config**
 ```bash
-vim ~/.config/darwin/modules/packages.nix
+vim ~/.config/nix/modules/home/packages.nix
 ```
 
 **Step 2: Add to home.packages**
@@ -379,7 +399,7 @@ home.packages = with pkgs; [
 
 **Step 3: Apply changes**
 ```bash
-darwin-rebuild switch --flake ~/.config/darwin
+darwin-rebuild switch --flake ~/.config/nix#lu-mbp
 ```
 
 **To streamline this, create a helper:**
@@ -389,17 +409,17 @@ darwin-rebuild switch --flake ~/.config/darwin
 # Usage: nix-add ripgrep
 
 PACKAGE="$1"
-CONFIG_FILE="$HOME/.config/darwin/modules/packages.nix"
+CONFIG_FILE="$HOME/.config/nix/modules/home/packages.nix"
 
 # Add package to the list
 sed -i '' "/home.packages = with pkgs; \[/a\\
   $PACKAGE" "$CONFIG_FILE"
 
 # Rebuild
-darwin-rebuild switch --flake ~/.config/darwin
+darwin-rebuild switch --flake ~/.config/nix#lu-mbp
 
 # Optional: commit to git
-cd ~/.config/darwin && git add . && git commit -m "Add $PACKAGE"
+cd ~/.config/nix && git add . && git commit -m "Add $PACKAGE"
 ```
 
 Make it executable: `chmod +x ~/.local/bin/nix-add`
@@ -417,16 +437,30 @@ brew install raycast
 **Option B: Add to config (permanent)**
 ```bash
 # Edit modules/homebrew.nix
-vim ~/.config/darwin/modules/homebrew.nix
+vim ~/.config/nix/modules/homebrew.nix
 
 # Add to casks list
 casks = [ "raycast" ];
 
 # Apply
-darwin-rebuild switch --flake ~/.config/darwin
+darwin-rebuild switch --flake ~/.config/nix#lu-mbp
 ```
 
 **Recommendation:** Use Option A for most GUI apps (they're not critical to reproducibility), use Option B for core tools you need everywhere.
+
+### Bootstrapping SSH + GitHub access
+
+`modules/home/ssh.nix` now generates `~/.ssh/id_ed25519` automatically during the first `darwin-rebuild switch`. After that completes (and after you've run `ssh-add --apple-use-keychain ~/.ssh/id_ed25519` as prompted), use the helper to wire the key into GitHub:
+
+```bash
+~/bin/bootstrap-ssh.sh
+```
+
+What it does:
+1. Runs `gh auth login` if the CLI lacks the right scopes (browser-based)
+2. Uploads both auth + signing keys to GitHub so commits stay verified
+
+Leave a note in your commit if you deviate from the helper (custom titles, multiple keys, etc.).
 
 ### Running One-Off Commands (No Installation)
 
@@ -493,14 +527,14 @@ direnv allow
 
 ```bash
 # After editing any module files:
-darwin-rebuild switch --flake ~/.config/darwin
+darwin-rebuild switch --flake ~/.config/nix#lu-mbp
 
 # Or if you're in the config directory:
-cd ~/.config/darwin
-darwin-rebuild switch --flake .
+cd ~/.config/nix
+darwin-rebuild switch --flake .#lu-mbp
 
 # To see what will change before applying:
-darwin-rebuild dry-build --flake .
+darwin-rebuild dry-build --flake .#lu-mbp
 ```
 
 ---
@@ -514,7 +548,7 @@ darwin-rebuild dry-build --flake .
 | `nix shell nixpkgs#pkg` | Temporary ephemeral environment | No persistent changes |
 | `nix run nixpkgs#pkg` | Run a package once | Disappears after execution |
 | `nix develop` | Enter project dev shell | Project-specific |
-| `darwin-rebuild switch --flake .` | Apply system config | Your primary rebuild command |
+| `darwin-rebuild switch --flake .#lu-mbp` | Apply system config | Your primary rebuild command |
 | `home-manager switch` | Apply home-manager config | Already run by darwin-rebuild |
 | `nix search nixpkgs#name` | Find packages | Read-only search |
 | `nix flake update` | Update flake.lock | Declarative version update |
@@ -544,27 +578,28 @@ This file teaches AI (Claude, Cursor, etc.) how to understand your setup:
 
 ## Repository Structure
 
-Your config lives in `~/.config/darwin/`:
+Your config lives in `~/.config/nix/`:
 - `flake.nix`: Main entry point (system + home-manager + Nix settings)
-- `modules/packages.nix`: CLI tools and packages
+- `modules/home/packages.nix`: CLI tools and packages
 - `modules/homebrew.nix`: GUI applications
 - `modules/system.nix`: macOS settings
-- `modules/shell.nix`: Shell configuration
+- `modules/darwin/*.nix`: Finder/Dock/app defaults imported by `modules/system.nix`
+- `modules/home/shell.nix`: Shell configuration
 - `users/yourname/home.nix`: User-specific config
 
 ## Key Principles
 
 1. **Everything is declarative**: Changes go in config files, not imperative commands
-2. **Single rebuild**: `darwin-rebuild switch --flake ~/.config/darwin` applies all changes
+2. **Single rebuild**: `darwin-rebuild switch --flake ~/.config/nix#lu-mbp` applies all changes
 3. **Determinate Nix manages Nix**: `nix.enable = false;` in nix-darwin
-4. **Version controlled**: Keep ~/.config/darwin in git
+4. **Version controlled**: Keep ~/.config/nix in git
 
 ## Common Tasks
 
 ### Add a CLI Tool
-1. Edit `modules/packages.nix`
+1. Edit `modules/home/packages.nix`
 2. Add to `home.packages` list
-3. Run `darwin-rebuild switch --flake ~/.config/darwin`
+3. Run `darwin-rebuild switch --flake ~/.config/nix#lu-mbp`
 
 Example:
 ```nix
@@ -577,7 +612,7 @@ home.packages = with pkgs; [
 ### Add a GUI App (Homebrew)
 1. Edit `modules/homebrew.nix`
 2. Add to `casks` list
-3. Run `darwin-rebuild switch --flake ~/.config/darwin`
+3. Run `darwin-rebuild switch --flake ~/.config/nix#lu-mbp`
 
 Example:
 ```nix
@@ -612,7 +647,7 @@ Then: `devenv shell`
 
 ## Documentation
 
-- Main config: ~/.config/darwin/flake.nix
+- Main config: ~/.config/nix/flake.nix
 - Home-manager: https://nix-community.github.io/home-manager/
 - nix-darwin: https://github.com/nix-darwin/nix-darwin
 - Determinate Nix: https://determinate.systems/
@@ -781,8 +816,8 @@ sh <(curl -L https://nixos.org/nix/install)
 ### 2. Create Configuration Directory
 
 ```bash
-mkdir -p ~/.config/darwin
-cd ~/.config/darwin
+mkdir -p ~/.config/nix
+cd ~/.config/nix
 git init
 ```
 
@@ -793,20 +828,23 @@ Copy the example from Part 3 above, replace `yourname` with your username.
 ### 4. Create Modules
 
 ```bash
-mkdir -p modules users/yourname
-touch modules/{system,packages,homebrew,shell}.nix
+mkdir -p hosts/yourname modules/darwin modules/home users/yourname
+touch hosts/yourname/default.nix
+touch modules/system.nix modules/homebrew.nix
+touch modules/darwin/{system-settings,app-preferences,dock,touchid-sudo}.nix
+touch modules/home/{packages,shell,git,ssh,fonts}.nix
 touch users/yourname/home.nix
 ```
 
-Fill each file with the examples from Part 3.
+Fill each file with the examples from Part 3 (or copy from this repo and adjust usernames/paths).
 
 ### 5. Build and Switch
 
 ```bash
-cd ~/.config/darwin
+cd ~/.config/nix
 
 # First build (evaluates config, pulls dependencies)
-darwin-rebuild switch --flake .
+darwin-rebuild switch --flake .#lu-mbp
 
 # You'll see detailed output of what's changing
 # If successful, your system is now configured!
@@ -833,7 +871,7 @@ direnv allow project
 ### 7. Version Control
 
 ```bash
-cd ~/.config/darwin
+cd ~/.config/nix
 git add .
 git commit -m "Initial nix-darwin configuration"
 ```
@@ -846,7 +884,7 @@ git commit -m "Initial nix-darwin configuration"
 
 **Binary search approach:**
 1. Comment out half your modules
-2. `darwin-rebuild switch --flake .`
+2. `darwin-rebuild switch --flake .#lu-mbp`
 3. If it works, uncomment 1/4 and repeat
 4. Find the culprit, fix the module import
 
@@ -867,11 +905,11 @@ nix flake update  # Update nixpkgs to latest
 
 ```bash
 # Verify you ran the right command
-cd ~/.config/darwin
-darwin-rebuild switch --flake .
+cd ~/.config/nix
+darwin-rebuild switch --flake .#lu-mbp
 
 # If using home-manager separately
-home-manager switch --flake ~/.config/darwin#yourname
+home-manager switch --flake ~/.config/nix#yourname
 ```
 
 ### Nix Daemon Issues
@@ -928,7 +966,7 @@ nix profile remove 0  # adjust number as needed
 
 1. Install Nix using this guide
 2. Set up the basic configuration from Part 3
-3. Add your most-used packages to `modules/packages.nix`
+3. Add your most-used packages to `modules/home/packages.nix`
 4. Get familiar with `darwin-rebuild switch`
 
 ### Month 2: Optimize Workflow
@@ -947,7 +985,7 @@ nix profile remove 0  # adjust number as needed
 
 ### Ongoing:
 
-- Keep `~/.config/darwin` in git
+- Keep `~/.config/nix` in git
 - Commit changes regularly
 - Test rebuilds before pushing
 - Share config with teammates for reproducibility
@@ -963,13 +1001,13 @@ curl -fsSL https://install.determinate.systems/nix | sh -s -- install --determin
 
 **Use this structure:**
 - flake.nix (everything)
-- modules/packages.nix (CLI tools)
+- modules/home/packages.nix (CLI tools)
 - modules/homebrew.nix (GUI apps)
 - modules/system.nix (macOS settings)
-- modules/shell.nix (shell config)
+- modules/home/shell.nix (shell config)
 - users/yourname/home.nix (user config)
 
-**Single command:** `darwin-rebuild switch --flake ~/.config/darwin`
+**Single command:** `darwin-rebuild switch --flake ~/.config/nix#lu-mbp`
 
 **Daily workflow:**
 - Edit config files when you need changes

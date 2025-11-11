@@ -38,29 +38,6 @@
     # For now, no plugins, can add later if needed
   };
 
-  # Shell-related packages
-  home.packages = with pkgs; [
-    # Essential shell utilities
-    eza # Modern ls replacement
-    zoxide # Smart cd command
-    direnv # Directory-based environments
-    nix-direnv # Nix integration for direnv
-
-    # File management tools
-    fd # Fast find alternative
-    ripgrep # Fast grep alternative
-    bat # Better cat with syntax highlighting
-
-    # System utilities
-    htop
-    tree
-    fortune # For fish greeting
-
-    # Network utilities
-    wget
-    curl
-  ];
-
   # Configure direnv for Nix integration
   programs.direnv = {
     enable = true;

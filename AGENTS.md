@@ -59,17 +59,25 @@ Do not guess or hallucinate about Nix. Validate all answers using these tools fi
 
 ```
 /Users/lu/.config/nix/
-├── flake.nix                    # Main entry point, imports all modules
+├── flake.nix                    # Main entry point (defines hosts via flake outputs)
 ├── flake.lock                   # Locked dependency versions (updated with `nix flake update`)
+├── hosts/
+│   └── lu-mbp/default.nix       # Host composition (imports modules + HM + nix-homebrew)
 ├── modules/
-│   ├── system.nix               # macOS system settings (Dock, Finder, keyboard, etc.)
-│   ├── packages.nix             # CLI tools installed globally via home-manager
-│   ├── homebrew.nix             # Homebrew casks (GUI apps) and brews
-│   └── shell.nix                # Shell configuration (zsh, starship, aliases)
+│   ├── system.nix               # nix-darwin host config + Determinate settings
+│   ├── homebrew.nix             # Declarative Homebrew/MAS management
+│   ├── darwin/                  # system.defaults, Dock, app preferences, Touch ID
+│   └── home/                    # home-manager modules (packages, shell, git, ssh, fonts…)
 └── users/
     └── lu/
-        └── home.nix             # User-specific home-manager configuration
+        └── home.nix             # User-specific home-manager entry point
 ```
+
+`modules/home/` contains:
+- `packages.nix` – complete CLI + font set (referenced by other modules)
+- `shell.nix`, `git.nix`, `ssh.nix`, `fonts.nix`, `apps/…` – single-responsibility modules imported by `users/lu/home.nix`
+
+`hosts/lu-mbp/default.nix` composes those modules with `inputs.home-manager` and `inputs.nix-homebrew`, so edit it when you need host-specific wiring (extra taps, new users, etc.).
 
 ---
 
@@ -113,27 +121,25 @@ Do not guess or hallucinate about Nix. Validate all answers using these tools fi
 
 ### 1. Add a CLI Tool (Permanent Global Installation)
 
-**File to edit:** `modules/packages.nix`
+**File to edit:** `modules/home/packages.nix`
 
 **Before you answer:**
 - Use mcp-nixos to verify the package name exists
 - Use context7 to check for any special configuration needed
 
 **Process:**
-1. Edit `/Users/lu/.config/nix/modules/packages.nix`
+1. Edit `/Users/lu/.config/nix/modules/home/packages.nix`
 2. Add package to `home.packages` list under `with pkgs;`
-3. Run `darwin-rebuild switch --flake /Users/lu/.config/nix`
+3. Run `darwin-rebuild switch --flake /Users/lu/.config/nix#lu-mbp`
 
 **Example structure** (verify details with mcp-nixos):
 ```nix
-# In /Users/lu/.config/nix/modules/packages.nix
-home-manager.users.lu = {
-  home.packages = with pkgs; [
-    # existing packages
-    ripgrep   # <-- verified with mcp-nixos ✓
-    fd        # <-- verified with mcp-nixos ✓
-  ];
-};
+# In /Users/lu/.config/nix/modules/home/packages.nix
+home.packages = with pkgs; [
+  # existing packages
+  ripgrep   # <-- verified with mcp-nixos ✓
+  fd        # <-- verified with mcp-nixos ✓
+];
 ```
 
 ### 2. Add a GUI Application (Homebrew Cask)
@@ -146,7 +152,7 @@ home-manager.users.lu = {
 **Process:**
 1. Edit `/Users/lu/.config/nix/modules/homebrew.nix`
 2. Add to the `casks` list
-3. Run `darwin-rebuild switch --flake /Users/lu/.config/nix`
+3. Run `darwin-rebuild switch --flake /Users/lu/.config/nix#lu-mbp`
 
 **Example structure** (verify details with mcp-nixos):
 ```nix
@@ -172,22 +178,22 @@ homebrew = {
 **Process:**
 1. Edit `/Users/lu/.config/nix/modules/system.nix`
 2. Add settings under `system.defaults.*`
-3. Run `darwin-rebuild switch --flake /Users/lu/.config/nix`
+3. Run `darwin-rebuild switch --flake /Users/lu/.config/nix#lu-mbp`
 
 **Important:** All option names must be validated with mcp-nixos. Do not guess at option names.
 
 ### 4. Configure Shell (zsh, aliases, prompt)
 
-**File to edit:** `modules/shell.nix`
+**File to edit:** `modules/home/shell.nix`
 
 **Before you answer:**
 - Use context7 to verify current home-manager shell configuration options
 - Use mcp-nixos to verify program names and options
 
 **Process:**
-1. Edit `/Users/lu/.config/nix/modules/shell.nix`
+1. Edit `/Users/lu/.config/nix/modules/home/shell.nix`
 2. Modify shell programs configuration
-3. Run `darwin-rebuild switch --flake /Users/lu/.config/nix`
+3. Run `darwin-rebuild switch --flake /Users/lu/.config/nix#lu-mbp`
 
 **Important:** Shell configuration options change. Use context7 to verify current syntax.
 
@@ -203,10 +209,27 @@ homebrew = {
 ```bash
 cd /Users/lu/.config/nix
 nix flake update
-darwin-rebuild switch --flake .
+darwin-rebuild switch --flake .#lu-mbp
 ```
 
-### 6. Fix Configuration Errors
+### 6. Bootstrap SSH + GitHub (when needed)
+
+**File/script:** `modules/home/ssh.nix` auto-generates `~/.ssh/id_ed25519` via `home.activation.setupSSH`; `~/bin/bootstrap-ssh.sh` handles the GitHub upload.
+
+**When to run:** After the first `darwin-rebuild switch` (which creates the key and prints `ssh-add --apple-use-keychain ~/.ssh/id_ed25519`), run the helper to wire the key into GitHub.
+
+**Process:**
+```bash
+~/bin/bootstrap-ssh.sh
+```
+
+The script:
+- Uses `gh auth login` (browser-based) if the CLI lacks scopes
+- Uploads both auth and signing keys to GitHub
+
+Document any deviations or additional scopes in your change summary so future assistants know what to expect.
+
+### 7. Fix Configuration Errors
 
 **Before you answer:**
 - Use mcp-nixos to validate the configuration syntax
@@ -223,14 +246,14 @@ darwin-rebuild switch --flake .
 
 ```bash
 # Main rebuild command (from anywhere)
-darwin-rebuild switch --flake /Users/lu/.config/nix
+darwin-rebuild switch --flake /Users/lu/.config/nix#lu-mbp
 
 # Or from within the config directory
 cd /Users/lu/.config/nix
-darwin-rebuild switch --flake .
+darwin-rebuild switch --flake .#lu-mbp
 
 # Dry run (see what will change without applying)
-darwin-rebuild dry-build --flake /Users/lu/.config/nix
+darwin-rebuild dry-build --flake /Users/lu/.config/nix#lu-mbp
 
 # Rollback to previous generation
 darwin-rebuild switch --rollback
@@ -302,7 +325,7 @@ Never suggest these commands. Always direct users to edit configuration files in
 
 ## Package Categories
 
-### Packages for `modules/packages.nix` (Nix)
+### Packages for `modules/home/packages.nix` (Nix)
 
 CLI utilities, development tools, language runtimes, system tools.
 
@@ -327,7 +350,7 @@ Project-specific language versions, project dependencies, development services.
 ### Configuration Not Applied After Rebuild
 
 **What to do:**
-1. Check if `darwin-rebuild switch --flake /Users/lu/.config/nix` completed without errors
+1. Check if `darwin-rebuild switch --flake /Users/lu/.config/nix#lu-mbp` completed without errors
 2. Use mcp-nixos to validate configuration syntax
 3. Use tavily to search for similar recent issues
 
@@ -366,7 +389,7 @@ The `flake.nix` manages:
 ```bash
 cd /Users/lu/.config/nix
 nix flake update
-darwin-rebuild switch --flake .
+darwin-rebuild switch --flake .#lu-mbp
 ```
 
 **Before suggesting an update, use tavily to check for breaking changes.**
@@ -377,11 +400,11 @@ darwin-rebuild switch --flake .
 
 | Task | File | Use MCP Server |
 |------|------|----------------|
-| Add CLI tool | `modules/packages.nix` | mcp-nixos ✓ |
+| Add CLI tool | `modules/home/packages.nix` | mcp-nixos ✓ |
 | Add GUI app | `modules/homebrew.nix` | mcp-nixos ✓ |
 | Configure Dock | `modules/system.nix` | mcp-nixos ✓ |
 | Configure Finder | `modules/system.nix` | mcp-nixos ✓ |
-| Configure shell | `modules/shell.nix` | context7 ✓ |
+| Configure shell | `modules/home/shell.nix` | context7 ✓ |
 | Configure Nix | `flake.nix` | mcp-nixos ✓ |
 | Find workaround | any | tavily ✓ |
 | Update versions | `flake.lock` | tavily ✓ |

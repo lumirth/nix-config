@@ -17,6 +17,12 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
+    # Determinate Systems - declarative Nix settings on macOS
+    determinate = {
+      url = "github:DeterminateSystems/determinate";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
     # nix-homebrew - declarative Homebrew management
     nix-homebrew.url = "github:zhaofengli/nix-homebrew";
 
@@ -31,61 +37,33 @@
     };
   };
 
-  outputs =
-    {
-      self,
-      nixpkgs,
-      nix-darwin,
-      home-manager,
-      nix-homebrew,
-      homebrew-core,
-      homebrew-cask,
-      ...
-    }:
-    {
-      # macOS system configuration for lu-mbp
-      darwinConfigurations."lu-mbp" = nix-darwin.lib.darwinSystem {
-        system = "aarch64-darwin";
-        modules = [
-          # Main system configuration
-          ./darwin.nix
-
-          # Homebrew management through nix-homebrew
-          nix-homebrew.darwinModules.nix-homebrew
-          {
-            nix-homebrew = {
-              enable = true;
-              user = "lu";
-              autoMigrate = true; # Migrate existing Homebrew installation
-
-              # Declarative tap management
-              taps = {
-                "homebrew/homebrew-core" = homebrew-core;
-                "homebrew/homebrew-cask" = homebrew-cask;
-              };
-              mutableTaps = false; # Fully declarative
-            };
-          }
-
-          # Sync homebrew taps with nix-homebrew configuration
-          (
-            { config, ... }:
-            {
-              homebrew.taps = builtins.attrNames config.nix-homebrew.taps;
-            }
-          )
-
-          # User environment management through home-manager
-          home-manager.darwinModules.home-manager
-          {
-            home-manager = {
-              useGlobalPkgs = true;
-              useUserPackages = true;
-              backupFileExtension = "backup";
-              users.lu = import ./home.nix;
-            };
-          }
-        ];
-      };
+  outputs = inputs@{
+    self,
+    nixpkgs,
+    nix-darwin,
+    determinate,
+    ...
+  }:
+  let
+    system = "aarch64-darwin";
+    hosts = {
+      "lu-mbp" = ./hosts/lu-mbp;
     };
+  in
+  {
+    darwinConfigurations =
+      builtins.mapAttrs
+        (
+          hostName: hostModule:
+          nix-darwin.lib.darwinSystem {
+            inherit system;
+            specialArgs = { inherit inputs; };
+            modules = [
+              determinate.darwinModules.default
+              hostModule
+            ];
+          }
+        )
+        hosts;
+  };
 }
