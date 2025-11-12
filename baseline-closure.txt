@@ -1,0 +1,3 @@
+warning: Git tree '/Users/lu/.config/nix' has uncommitted changes
+warning: Using 'builtins.toFile' to create a file named 'options.json' that references the store path '/nix/store/9ipwlv6j5zbywcsj6nm2y7bgn9arcxk3-source' without a proper context. The resulting file will not have a correct store reference, so this is unreliable and may stop working in the future.
+/nix/store/b28dacc7d3fd60wj4mzih97w3i9zpfl4-darwin-system-25.11.c48e963
