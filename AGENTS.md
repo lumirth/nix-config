@@ -59,44 +59,34 @@ Do not guess or hallucinate about Nix. Validate all answers using these tools fi
 
 ### Simplified Architecture
 
-This configuration uses a **7-file structure** optimized for single-machine use:
+This configuration uses a **4-file structure** optimized for single-machine use:
 
-1. **flake.nix** – Entry point with inputs and outputs
-2. **system.nix** – Complete nix-darwin configuration
-3. **home.nix** – Complete home-manager configuration
-4. **darwin/defaults.nix** – macOS system preferences + Touch ID
-5. **darwin/apps.nix** – Application preferences + Dock
-6. **flake/nixpkgs-config.nix** – Shared nixpkgs configuration
-7. **pkgs/claude-code-acp/default.nix** – Custom packages
+1. **flake.nix** – Entry point with all inputs, outputs, nixpkgs instantiation, overlays, devShell, and checks
+2. **system.nix** – Complete nix-darwin configuration (Determinate Nix, Homebrew, macOS defaults, Dock, app preferences)
+3. **home.nix** – Complete home-manager configuration (packages, shell, Git, SSH, secrets)
+4. **pkgs/claude-code-acp/default.nix** – Custom package definition
 
 **Key Benefits:**
-- 60% reduction in file count from previous structure
+- 64% reduction in file count from previous 11-file structure
 - Single source of truth for each concern
+- No framework abstractions (vanilla flake structure)
+- Declarative-first patterns throughout
 - Easier navigation and modification
-- Clear separation without over-abstraction
 - Modern Nix best practices throughout
 
 ---
 
 ## Repository Structure
 
-This configuration uses a simplified 7-file structure optimized for single-machine use:
+This configuration uses a simplified 4-file structure optimized for single-machine use:
 
 ```
 /Users/lu/.config/nix/
-├── flake.nix                    # Entry point, inputs, outputs
-├── flake/
-│   ├── nixpkgs-config.nix       # Shared nixpkgs configuration (unfree packages)
-│   ├── darwin.nix               # Darwin system output wiring
-│   ├── devshell.nix             # Development shell configuration
-│   └── tooling.nix              # Formatter and tooling setup
-├── system.nix                   # All nix-darwin configuration
-├── home.nix                     # All home-manager configuration
-├── darwin/
-│   ├── defaults.nix             # macOS system.defaults.* settings + Touch ID
-│   └── apps.nix                 # Application preferences + Dock configuration
+├── flake.nix                    # Entry point: inputs, outputs, nixpkgs config, overlays, devShell, checks
+├── system.nix                   # Complete nix-darwin configuration
+├── home.nix                     # Complete home-manager configuration
 ├── pkgs/
-│   └── claude-code-acp/         # Custom packages (flake outputs)
+│   └── claude-code-acp/         # Custom packages (via overlay)
 │       └── default.nix
 └── secrets/
     └── ssh/
@@ -105,11 +95,10 @@ This configuration uses a simplified 7-file structure optimized for single-machi
 
 ### Key Files
 
-- **system.nix** – Complete nix-darwin configuration including Determinate Nix settings, Homebrew casks, and system packages. Imports darwin/defaults.nix and darwin/apps.nix.
-- **home.nix** – Complete home-manager configuration including CLI packages, shell setup (zsh, starship), git, SSH, sops secrets, and fonts.
-- **darwin/defaults.nix** – macOS system preferences (NSGlobalDomain, Finder, Dock) and Touch ID configuration with tmux/screen support.
-- **darwin/apps.nix** – Application-specific preferences and Dock configuration.
-- **flake/nixpkgs-config.nix** – Single source of truth for nixpkgs configuration (unfree package allowances).
+- **flake.nix** – Vanilla flake structure (no flake-parts) with all inputs, outputs, nixpkgs instantiation with config and overlays, darwinConfigurations, devShells, checks, and treefmt configuration.
+- **system.nix** – Complete nix-darwin configuration including Determinate Nix settings, Homebrew casks/brews/MAS apps, macOS system defaults (NSGlobalDomain, Finder, screencapture), Dock configuration, application preferences (CustomUserPreferences), Touch ID configuration with tmux/screen support, and system user settings.
+- **home.nix** – Complete home-manager configuration including CLI packages, shell setup (zsh, starship, direnv, zoxide, fzf), declarative Git configuration with SSH signing, SSH configuration, sops secrets management, fonts, and environment variables.
+- **pkgs/claude-code-acp/default.nix** – Custom package integrated via overlay pattern in flake.nix, available as `pkgs.claude-code-acp`.
 
 Home Manager is integrated as a nix-darwin module, meaning one `sudo darwin-rebuild switch --flake .#lu-mbp` updates everything atomically.
 
@@ -203,15 +192,15 @@ homebrew = {
 
 ### 3. Configure macOS System Settings
 
-**File to edit:** `darwin/defaults.nix`
+**File to edit:** `system.nix`
 
 **Before you answer:**
 - Use mcp-nixos to verify all `system.defaults.*` option names
 - Use context7 to check for any recent changes in option names
 
 **Process:**
-1. Edit `/Users/lu/.config/nix/darwin/defaults.nix`
-2. Add settings under `system.defaults.*`
+1. Edit `/Users/lu/.config/nix/system.nix`
+2. Add settings under `system.defaults.*` (look for the macOS defaults section)
 3. Run `sudo darwin-rebuild switch --flake /Users/lu/.config/nix#lu-mbp`
 
 **Important:** All option names must be validated with mcp-nixos. Do not guess at option names.
@@ -246,20 +235,28 @@ nix flake update
 sudo darwin-rebuild switch --flake .#lu-mbp
 ```
 
-### 6. Bootstrap SSH + GitHub (when needed)
+### 6. Authenticate GitHub CLI and Upload SSH Keys
 
-**File/script:** SSH keys are managed via sops-nix in `home.nix`. The encrypted keys are stored in `secrets/ssh/secrets.yaml` and automatically decrypted to `~/.ssh/` during system build. `~/bin/bootstrap-ssh.sh` handles the GitHub upload.
+**File:** SSH keys are managed via sops-nix in `home.nix`. The encrypted keys are stored in `secrets/ssh/secrets.yaml` and automatically decrypted to `~/.ssh/` during system build.
 
-**When to run:** After the first `darwin-rebuild switch` (which decrypts and installs the SSH keys), run the helper to upload the keys to GitHub.
+**When to run:** After the first `darwin-rebuild switch` (which decrypts and installs the SSH keys), manually authenticate GitHub CLI and upload the keys.
 
 **Process:**
 ```bash
-~/bin/bootstrap-ssh.sh
+# Authenticate with GitHub CLI (opens browser)
+gh auth login -p https -h github.com -w -s admin:public_key,admin:ssh_signing_key
+
+# Upload SSH key for authentication
+gh ssh-key add ~/.ssh/id_ed25519.pub --title "$(scutil --get ComputerName) - $(date +%Y-%m-%d)"
+
+# Upload SSH key for commit signing
+gh ssh-key add ~/.ssh/id_ed25519.pub --type signing --title "$(scutil --get ComputerName) - Signing - $(date +%Y-%m-%d)"
 ```
 
-The script:
-- Uses `gh auth login` (browser-based) if the CLI lacks scopes
-- Uploads both auth and signing keys to GitHub
+**What this does:**
+- Authenticates GitHub CLI with required scopes
+- Uploads SSH public key for authentication (git clone, push, etc.)
+- Uploads SSH public key for commit signing
 
 For detailed bootstrap procedures, see [docs/BOOTSTRAP.md](docs/BOOTSTRAP.md).
 
@@ -436,11 +433,11 @@ darwin-rebuild switch --flake .#lu-mbp
 |------|------|----------------|
 | Add CLI tool | `home.nix` | mcp-nixos ✓ |
 | Add GUI app | `system.nix` (`homebrew` block) | mcp-nixos ✓ |
-| Configure Dock | `darwin/apps.nix` | mcp-nixos ✓ |
-| Configure Finder | `darwin/defaults.nix` | mcp-nixos ✓ |
+| Configure Dock | `system.nix` (Dock section) | mcp-nixos ✓ |
+| Configure Finder | `system.nix` (system.defaults section) | mcp-nixos ✓ |
 | Configure shell | `home.nix` | context7 ✓ |
-| Configure Nix | `system.nix` | mcp-nixos ✓ |
-| Configure Touch ID | `darwin/defaults.nix` | mcp-nixos ✓ |
+| Configure Nix | `system.nix` (determinate-nix section) | mcp-nixos ✓ |
+| Configure Touch ID | `system.nix` (security.pam section) | mcp-nixos ✓ |
 | Manage secrets | `secrets/ssh/secrets.yaml` | context7 ✓ |
 | Find workaround | any | tavily ✓ |
 | Update versions | `flake.lock` | tavily ✓ |

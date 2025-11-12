@@ -91,9 +91,9 @@ sudo darwin-rebuild switch --flake .#lu-mbp
 
 **First-time build:** The initial build may take 10-20 minutes as it downloads and builds all dependencies.
 
-### Step 4: Bootstrap SSH Keys to GitHub
+### Step 4: Authenticate GitHub CLI
 
-After the initial system build, your SSH keys have been decrypted and placed in `~/.ssh/`. Now you need to upload them to GitHub for authentication and commit signing.
+After the initial system build, your SSH keys have been decrypted and placed in `~/.ssh/`. Now you need to authenticate with GitHub for SSH access and commit signing.
 
 #### Add SSH Key to Keychain
 
@@ -103,21 +103,26 @@ First, add the SSH key to your macOS keychain:
 ssh-add --apple-use-keychain ~/.ssh/id_ed25519
 ```
 
-#### Upload Keys to GitHub
+#### Authenticate with GitHub
 
-Run the bootstrap script to upload your SSH keys to GitHub:
+The configuration uses declarative Git SSH signing, but you still need to authenticate GitHub CLI and upload your SSH keys manually:
 
 ```bash
-~/bin/bootstrap-ssh.sh
+# Authenticate with GitHub CLI (opens browser)
+gh auth login -p https -h github.com -w -s admin:public_key,admin:ssh_signing_key
+
+# Upload SSH key for authentication
+gh ssh-key add ~/.ssh/id_ed25519.pub --title "$(scutil --get ComputerName) - $(date +%Y-%m-%d)"
+
+# Upload SSH key for commit signing
+gh ssh-key add ~/.ssh/id_ed25519.pub --type signing --title "$(scutil --get ComputerName) - Signing - $(date +%Y-%m-%d)"
 ```
 
 **What this does:**
-1. Checks if GitHub CLI (`gh`) is authenticated
-2. If not authenticated, opens your browser to authenticate with GitHub
-   - Requests scopes: `admin:public_key`, `admin:ssh_signing_key`
-3. Uploads your SSH public key as an **authentication key** (for `git clone`, `git push`, etc.)
-4. Uploads your SSH public key as a **signing key** (for commit signing)
-5. Uses your computer name + timestamp as the key title for easy identification
+1. Authenticates GitHub CLI with required scopes (`admin:public_key`, `admin:ssh_signing_key`)
+2. Uploads your SSH public key as an **authentication key** (for `git clone`, `git push`, etc.)
+3. Uploads your SSH public key as a **signing key** (for commit signing)
+4. Uses your computer name + timestamp as the key title for easy identification
 
 **Verify SSH Access:**
 
@@ -284,13 +289,19 @@ After successful bootstrap:
 
 ## Configuration Files Overview
 
-- `flake.nix` - Entry point, defines inputs and outputs
-- `system.nix` - System-level configuration (nix-darwin)
-- `home.nix` - User-level configuration (home-manager)
-- `darwin/defaults.nix` - macOS system preferences and Touch ID
-- `darwin/apps.nix` - Application preferences and Dock configuration
-- `flake/nixpkgs-config.nix` - Shared nixpkgs configuration (unfree packages)
-- `secrets/` - Encrypted secrets managed by sops-nix
+This configuration uses a simplified **4-file structure** optimized for single-machine use:
+
+- **flake.nix** - Entry point with all inputs, outputs, nixpkgs instantiation, devShell, and checks
+- **system.nix** - Complete nix-darwin configuration (Determinate Nix, Homebrew, macOS defaults, Dock, app preferences)
+- **home.nix** - Complete home-manager configuration (packages, shell, Git, SSH, secrets)
+- **pkgs/claude-code-acp/default.nix** - Custom package definition
+
+**Key Benefits:**
+- 64% reduction in file count from previous structure
+- Single source of truth for each concern
+- No framework abstractions (vanilla flake structure)
+- Declarative-first patterns throughout
+- Easy to navigate and understand
 
 ## Additional Resources
 

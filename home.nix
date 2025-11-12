@@ -1,6 +1,5 @@
 {
   config,
-  lib,
   pkgs,
   inputs,
   ...
@@ -13,7 +12,6 @@ let
 
   # Git configuration
   sshPubSecretName = "ssh_public_key";
-  hasManagedSshKey = config.sops.secrets ? sshPubSecretName;
   allowedSigners = "${config.xdg.configHome}/git/allowed_signers";
 
   # Rectangle Pro configuration
@@ -23,48 +21,6 @@ let
   # Age key configuration
   ageKeyFile = "${config.home.homeDirectory}/.config/sops/age/keys.txt";
 
-  # SSH bootstrap script
-  bootstrapScript = ''
-    #!/usr/bin/env bash
-    set -euo pipefail
-
-    SSH_DIR="${sshDir}"
-    SSH_KEY="$SSH_DIR/id_ed25519"
-    SSH_PUB_KEY="$SSH_DIR/id_ed25519.pub"
-
-    if [ ! -f "$SSH_KEY" ] || [ ! -f "$SSH_PUB_KEY" ]; then
-      echo "SSH keypair not found at $SSH_DIR. Run 'sudo darwin-rebuild switch --flake .#lu-mbp' after adding the encrypted secret." >&2
-      exit 1
-    fi
-
-    if ! ${pkgs.gh}/bin/gh auth status >/dev/null 2>&1; then
-      echo "Authenticating GitHub CLI (browser will open)..."
-      PATH="/usr/bin:/bin:$PATH" \
-        GIT_EXEC_PATH="${pkgs.git}/libexec/git-core" \
-        ${pkgs.gh}/bin/gh auth login -p https -h github.com -w -s admin:public_key,admin:ssh_signing_key
-    fi
-
-    KEY_TITLE="$(/usr/sbin/scutil --get ComputerName)-$(date +%Y%m%d-%H%M%S)"
-    SSH_KEY_CONTENT="$(awk '{print $1" "$2}' "$SSH_PUB_KEY")"
-
-    if ! ${pkgs.gh}/bin/gh api /user/keys 2>/dev/null | grep -q "$SSH_KEY_CONTENT"; then
-      PATH="/usr/bin:/bin:$PATH" \
-        GIT_EXEC_PATH="${pkgs.git}/libexec/git-core" \
-        ${pkgs.gh}/bin/gh ssh-key add "$SSH_PUB_KEY" --title "$KEY_TITLE"
-    else
-      echo "✓ SSH authentication key already present on GitHub"
-    fi
-
-    if ! ${pkgs.gh}/bin/gh api /user/ssh_signing_keys 2>/dev/null | grep -q "$SSH_KEY_CONTENT"; then
-      PATH="/usr/bin:/bin:$PATH" \
-        GIT_EXEC_PATH="${pkgs.git}/libexec/git-core" \
-        ${pkgs.gh}/bin/gh ssh-key add "$SSH_PUB_KEY" --title "$KEY_TITLE" --type signing
-    else
-      echo "✓ SSH signing key already present on GitHub"
-    fi
-
-    echo "SSH bootstrap complete. Test with: ssh -T git@github.com"
-  '';
 in
 {
   # ============================================================================
@@ -99,10 +55,6 @@ in
   # ============================================================================
 
   home.packages = with pkgs; [
-    # Version control
-    git
-    gh
-
     # Development tools
     python3
     pipx
@@ -120,9 +72,6 @@ in
     jq # JSON processor
     yq # YAML processor
     eza
-    zoxide
-    direnv
-    nix-direnv
     fd
     ripgrep
     bat
@@ -237,8 +186,9 @@ in
     userName = "lumirth";
     userEmail = "65358837+lumirth@users.noreply.github.com";
 
-    signing = lib.mkIf hasManagedSshKey {
+    signing = {
       key = config.sops.secrets."${sshPubSecretName}".path;
+      format = "ssh";
       signByDefault = true;
     };
 
@@ -265,22 +215,26 @@ in
     };
   };
 
-  home.activation.setupAllowedSigners = lib.mkIf hasManagedSshKey (
-    lib.hm.dag.entryAfter [ "sops-install-secrets" ] ''
-      ALLOWED_SIGNERS='${allowedSigners}'
-      SSH_PUB_FILE='${config.sops.secrets."${sshPubSecretName}".path}'
+  # Declaratively generate allowed_signers file from sops-managed public key
+  # We use sops-nix templates feature to generate the file with the decrypted public key content
+  sops.templates."git-allowed-signers" = {
+    content = ''
+      ${config.programs.git.userEmail} ${config.sops.placeholder."${sshPubSecretName}"}
+    '';
+    path = allowedSigners;
+    mode = "0644";
+  };
 
-      if [ ! -f "$SSH_PUB_FILE" ]; then
-        warnEcho "sops-nix key $SSH_PUB_FILE not found; skipping allowed_signers update"
-        exit 0
-      fi
+  # ============================================================================
+  # GitHub CLI Configuration
+  # ============================================================================
 
-      run mkdir -p "$(dirname "$ALLOWED_SIGNERS")"
-      noteEcho "Updating git allowed_signers at $ALLOWED_SIGNERS"
-      ${pkgs.coreutils}/bin/printf "%s %s\n" "${config.programs.git.userEmail}" "$(${pkgs.coreutils}/bin/cat "$SSH_PUB_FILE")" > "$ALLOWED_SIGNERS"
-      run chmod 644 "$ALLOWED_SIGNERS"
-    ''
-  );
+  programs.gh = {
+    enable = true;
+    settings = {
+      git_protocol = "ssh";
+    };
+  };
 
   # ============================================================================
   # SSH Configuration
@@ -297,11 +251,6 @@ in
     };
   };
 
-  home.activation.ensureSshDir = lib.hm.dag.entryBefore [ "writeBoundary" ] ''
-    run mkdir -p '${sshDir}'
-    run chmod 700 '${sshDir}'
-  '';
-
   sops.secrets."ssh_private_key" = {
     sopsFile = secretsYamlFile;
     path = "${sshDir}/id_ed25519";
@@ -314,11 +263,6 @@ in
     mode = "0644";
   };
 
-  home.file."bin/bootstrap-ssh.sh" = {
-    text = bootstrapScript;
-    executable = true;
-  };
-
   # ============================================================================
   # Secrets Management (sops-nix)
   # ============================================================================
@@ -326,25 +270,9 @@ in
   sops.age.keyFile = ageKeyFile;
   # Age key hydration must happen manually (see devshell hook).
 
-  # Idempotent permission enforcement for Age key
-  # Ensures the sops-nix Age key has correct permissions (0600) on every activation
-  home.activation.sopsAgeKeyPermissions = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
-    if [ -f "${ageKeyFile}" ]; then
-      run chmod 600 "${ageKeyFile}"
-      $DRY_RUN_CMD echo "✓ Enforced 0600 permissions on Age key: ${ageKeyFile}"
-    else
-      $DRY_RUN_CMD echo "⚠ Age key not found (run bin/infisical-bootstrap-sops first): ${ageKeyFile}"
-    fi
-  '';
-
   # ============================================================================
   # Application Configuration - Rectangle Pro
   # ============================================================================
-
-  # Ensure the Rectangle Pro support directory exists before secrets are written
-  home.activation.ensureRectangleProDir = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
-    mkdir -p '${rectangleDir}'
-  '';
 
   sops.secrets."rectangle-pro-padl" = {
     format = "binary";
