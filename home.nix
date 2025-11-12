@@ -87,6 +87,7 @@ in
     cursor-cli
     ghost-cli
     claude-code
+    claude-code-acp
 
     # Fonts
     # Nerd Fonts for terminal and coding
