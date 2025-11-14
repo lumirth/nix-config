@@ -5,6 +5,7 @@
   ...
 }:
 let
+  inherit (pkgs) lib;
   # SSH configuration
   sshDir = "${config.home.homeDirectory}/.ssh";
   secretsDir = ./secrets/ssh;
@@ -62,6 +63,7 @@ in
     devenv
     cachix
     nodejs_22
+    micro
 
     # Nix language servers
     nil
@@ -88,6 +90,7 @@ in
     ghost-cli
     colima
     docker
+    starship
     claude-code
     claude-code-acp
 
@@ -131,21 +134,74 @@ in
   # Shell Configuration
   # ============================================================================
 
-  programs.zsh = {
-    enable = true;
+  programs.zsh = lib.mkMerge [
+    {
+      enable = true;
+      enableCompletion = true;
 
-    # Shell aliases
-    shellAliases = {
-      clip = "pbcopy";
-      ls = "eza --group-directories-first";
-      la = "ls -a";
-      ll = "ls --git -l";
-      lt = "ls --tree -D -L 2 -I \"cache|log|logs|node_modules|vendor\"";
-      ltt = "ls --tree -D -L 3 -I \"cache|log|logs|node_modules|vendor\"";
-      lttt = "ls --tree -D -L 4 -I \"cache|log|logs|node_modules|vendor\"";
-      py = "python";
-    };
-  };
+      history = {
+        size = 10000;
+        save = 10000;
+        path = "${config.home.homeDirectory}/.zsh_history";
+        share = true;
+        extended = true;
+        ignoreSpace = true;
+        ignoreDups = true;
+        expireDuplicatesFirst = true;
+      };
+
+      autosuggestion.enable = true;
+      syntaxHighlighting.enable = true;
+
+      shellAliases = {
+        clip = "pbcopy";
+        paste = "pbpaste";
+        ls = "eza --group-directories-first --icons";
+        la = "ls -a";
+        ll = "ls --git -lh";
+        tree = "eza --tree --icons";
+        lt = "tree -L 2 -I 'cache|log|logs|node_modules|vendor'";
+        py = "python3";
+        pip = "python3 -m pip";
+        cat = "bat --style=plain --paging=never";
+        nano = "micro";
+        grep = "rg --hidden --smart-case";
+        find = "fd --hidden";
+        g = "git";
+        gst = "git status";
+        gco = "git checkout";
+        gcm = "git commit -m";
+        gp = "git push";
+        gl = "git pull";
+        ncg = "nix-collect-garbage -d";
+        nfu = "nix flake update";
+        d = "docker";
+        dc = "docker-compose";
+        dswitch = "sudo darwin-rebuild switch --flake .#$(hostname -s)";
+        dupdate = "sudo darwin-rebuild switch --flake .#$(hostname -s) --upgrade";
+        hswitch = "home-manager switch --flake .#${config.home.username}@$(hostname -s)";
+        hupdate = "home-manager switch --flake .#${config.home.username}@$(hostname -s) --upgrade";
+        zshrc = "$EDITOR ~/.zshrc";
+        nconfig = "$EDITOR ~/.config/home-manager/home.nix";
+      };
+    }
+    {
+      initContent = ''
+        bindkey '^[[1;5C' forward-word
+        bindkey '^[[1;5D' backward-word
+
+        setopt AUTO_PUSHD
+        setopt PUSHD_IGNORE_DUPS
+        setopt PUSHD_SILENT
+        setopt CORRECT
+        setopt CDABLE_VARS
+        setopt EXTENDED_GLOB
+
+        zstyle ':completion:*' matcher-list 'm:{a-zA-Z}={A-Za-z}'
+        zstyle ':completion:*' list-colors "''${(s.:.)LS_COLORS}"
+      '';
+    }
+  ];
 
   # Configure direnv for Nix integration
   programs.direnv = {
@@ -157,6 +213,17 @@ in
   programs.zoxide = {
     enable = true;
     enableZshIntegration = true;
+    options = [ "--cmd cd" ];
+  };
+
+  programs.atuin = {
+    enable = true;
+    enableZshIntegration = true;
+    settings = {
+      auto_sync = false;
+      search_mode = "fuzzy";
+      style = "compact";
+    };
   };
 
   # Configure fzf
@@ -169,13 +236,75 @@ in
       "--layout=reverse"
       "--border"
     ];
-    defaultCommand = "fd --type f --hidden --follow --exclude .git";
-    fileWidgetCommand = "fd --type f --hidden --follow --exclude .git";
+    defaultCommand = "fd --type f --hidden --exclude .git";
+    fileWidgetCommand = "fd --type f --hidden --exclude .git";
+    changeDirWidgetCommand = "fd --type d";
+  };
+
+  programs.starship = {
+    enable = true;
+    enableZshIntegration = true;
+    package = pkgs.starship;
+
+    settings = {
+      format = "$directory$git_branch$git_status$nix_shell$character";
+      add_newline = true;
+
+      character = {
+        success_symbol = "[➜](bold green)";
+        error_symbol = "[✗](bold red)";
+        vimcmd_symbol = "[←](bold green)";
+      };
+
+      directory = {
+        truncation_length = 3;
+        truncation_symbol = "…/";
+        truncate_to_repo = true;
+        style = "bold cyan";
+        read_only = " 󰌾";
+        home_symbol = "~";
+      };
+
+      nix_shell = {
+        format = " [$state$name]($style)";
+        symbol = "";
+        style = "bold blue";
+        impure_msg = "!impure ";
+        pure_msg = "nix ";
+        unknown_msg = "";
+      };
+
+      git_branch = {
+        symbol = "";
+        format = " [$branch]($style)";
+        style = "bold purple";
+      };
+
+      git_status = {
+        format = "[$all_status$ahead_behind]($style)";
+        style = "bold red";
+        conflicted = "C$count ";
+        ahead = "↑$count ";
+        behind = "↓$count ";
+        diverged = "↕$ahead_count/$behind_count ";
+        untracked = "?$count ";
+        stashed = "s$count ";
+        modified = "~$count ";
+        staged = "+$count ";
+        renamed = ">$count ";
+        deleted = "-$count ";
+      };
+
+      package.disabled = true;
+      aws.disabled = true;
+      gcloud.disabled = true;
+    };
   };
 
   # Environment variables
   home.sessionVariables = {
     EDITOR = "zed";
+    VISUAL = "micro";
     PAGER = "less";
     LESS = "-R";
   };
