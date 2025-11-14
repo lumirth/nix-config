@@ -256,6 +256,7 @@
       "android-studio"
       "obsidian"
       "orbstack"
+      "thebrowsercompany-dia"
     ];
 
     brews = [ ];

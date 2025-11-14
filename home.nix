@@ -86,6 +86,8 @@ in
     infisical
     cursor-cli
     ghost-cli
+    colima
+    docker
     claude-code
     claude-code-acp
 
