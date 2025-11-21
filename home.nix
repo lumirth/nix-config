@@ -65,6 +65,12 @@ in
     nodejs_22
     micro
 
+    # Zsh performance helpers
+    zsh-defer
+    zsh-autosuggestions
+    zsh-history-substring-search
+    zsh-syntax-highlighting
+
     # Nix language servers
     nil
     nixd
@@ -138,6 +144,15 @@ in
     {
       enable = true;
       enableCompletion = true;
+      completionInit = ''
+        autoload -Uz compinit
+        # Rebuild completion dump at most once per 24h
+        if [[ -n ${"ZDOTDIR:-$HOME"}/.zcompdump(#qN.mh+24) ]]; then
+          compinit
+        else
+          compinit -C
+        fi
+      '';
       setOptions = [
         "NO_INTERACTIVE_COMMENTS"
         "NO_NOMATCH"
@@ -154,10 +169,12 @@ in
         expireDuplicatesFirst = true;
       };
 
-      autosuggestion.enable = true;
-      syntaxHighlighting.enable = true;
+      # Plugin integrations handled manually with zsh-defer
+      autosuggestion.enable = false;
+      syntaxHighlighting.enable = false;
 
       shellAliases = {
+        z = "zoxide query";
         clip = "pbcopy";
         paste = "pbpaste";
         ls = "eza --group-directories-first --icons";
@@ -181,23 +198,30 @@ in
         nfu = "nix flake update";
         d = "docker";
         dc = "docker-compose";
-        dswitch = "sudo darwin-rebuild switch --flake .#$(hostname -s)";
-        dupdate = "sudo darwin-rebuild switch --flake .#$(hostname -s) --upgrade";
-        hswitch = "home-manager switch --flake .#${config.home.username}@$(hostname -s)";
-        hupdate = "home-manager switch --flake .#${config.home.username}@$(hostname -s) --upgrade";
+        ds = "sudo darwin-rebuild switch --flake .#$(hostname -s)";
+        du = "sudo darwin-rebuild switch --flake .#$(hostname -s) --upgrade";
+        hs = "home-manager switch --flake .#${config.home.username}@$(hostname -s)";
+        hu = "home-manager switch --flake .#${config.home.username}@$(hostname -s) --upgrade";
         zshrc = "$EDITOR ~/.zshrc";
         nconfig = "$EDITOR ~/.config/home-manager/home.nix";
       };
     }
     {
       initContent = ''
+        # Enable for startup profiling: uncomment the next line, open a login shell, then run `zprof`
+        # zmodload zsh/zprof
+
+        # zsh-defer speeds up startup by loading non-critical pieces after first prompt
+        if [[ -f ${pkgs.zsh-defer}/share/zsh-defer/zsh-defer.plugin.zsh ]]; then
+          source ${pkgs.zsh-defer}/share/zsh-defer/zsh-defer.plugin.zsh
+        fi
+
         bindkey '^[[1;5C' forward-word
         bindkey '^[[1;5D' backward-word
 
         setopt AUTO_PUSHD
         setopt PUSHD_IGNORE_DUPS
         setopt PUSHD_SILENT
-        setopt CORRECT
         setopt CDABLE_VARS
         setopt EXTENDED_GLOB
         unsetopt INTERACTIVE_COMMENTS
@@ -207,6 +231,34 @@ in
 
         zstyle ':completion:*' matcher-list 'm:{a-zA-Z}={A-Za-z}'
         zstyle ':completion:*' list-colors "''${(s.:.)LS_COLORS}"
+
+        # Prompt first, then heavier integrations
+        eval "$(starship init zsh)"
+
+        # direnv stays synchronous so project envs load immediately
+        eval "$(direnv hook zsh)"
+
+        if typeset -f zsh-defer >/dev/null; then
+          zsh-defer eval "$(zoxide init zsh --cmd cd)"
+          zsh-defer eval "$(atuin init zsh --disable-up-arrow)"
+          zsh-defer eval "$(fzf --zsh)"
+
+          zsh-defer source ${pkgs.zsh-autosuggestions}/share/zsh-autosuggestions/zsh-autosuggestions.zsh
+          zsh-defer source ${pkgs.zsh-syntax-highlighting}/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
+          zsh-defer eval 'source ${pkgs.zsh-history-substring-search}/share/zsh-history-substring-search/zsh-history-substring-search.zsh; bindkey "^[[A" history-substring-search-up; bindkey "^[OA" history-substring-search-up; bindkey "^[[B" history-substring-search-down; bindkey "^[OB" history-substring-search-down'
+        else
+          eval "$(zoxide init zsh --cmd cd)"
+          eval "$(atuin init zsh --disable-up-arrow)"
+          eval "$(fzf --zsh)"
+
+          source ${pkgs.zsh-autosuggestions}/share/zsh-autosuggestions/zsh-autosuggestions.zsh
+          source ${pkgs.zsh-syntax-highlighting}/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
+          source ${pkgs.zsh-history-substring-search}/share/zsh-history-substring-search/zsh-history-substring-search.zsh
+          bindkey "^[[A" history-substring-search-up
+          bindkey "^[OA" history-substring-search-up
+          bindkey "^[[B" history-substring-search-down
+          bindkey "^[OB" history-substring-search-down
+        fi
       '';
     }
   ];
@@ -214,19 +266,20 @@ in
   # Configure direnv for Nix integration
   programs.direnv = {
     enable = true;
+    enableZshIntegration = false;
     nix-direnv.enable = true;
   };
 
   # Configure zoxide
   programs.zoxide = {
     enable = true;
-    enableZshIntegration = true;
+    enableZshIntegration = false;
     options = [ "--cmd cd" ];
   };
 
   programs.atuin = {
     enable = true;
-    enableZshIntegration = true;
+    enableZshIntegration = false;
     settings = {
       auto_sync = false;
       search_mode = "fuzzy";
@@ -237,7 +290,7 @@ in
   # Configure fzf
   programs.fzf = {
     enable = true;
-    enableZshIntegration = true;
+    enableZshIntegration = false;
     defaultOptions = [
       "--ansi"
       "--height 40%"
@@ -251,10 +304,12 @@ in
 
   programs.starship = {
     enable = true;
-    enableZshIntegration = true;
+    enableZshIntegration = false;
     package = pkgs.starship;
 
     settings = {
+      scan_timeout = 10;
+      command_timeout = 300;
       format = "$directory$git_branch$git_status$nix_shell$character";
       add_newline = true;
 
