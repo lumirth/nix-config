@@ -138,6 +138,10 @@ in
     {
       enable = true;
       enableCompletion = true;
+      setOptions = [
+        "NO_INTERACTIVE_COMMENTS"
+        "NO_NOMATCH"
+      ];
 
       history = {
         size = 10000;
@@ -196,6 +200,10 @@ in
         setopt CORRECT
         setopt CDABLE_VARS
         setopt EXTENDED_GLOB
+        unsetopt INTERACTIVE_COMMENTS
+
+        autoload -Uz select-word-style
+        select-word-style bash
 
         zstyle ':completion:*' matcher-list 'm:{a-zA-Z}={A-Za-z}'
         zstyle ':completion:*' list-colors "''${(s.:.)LS_COLORS}"
@@ -315,8 +323,6 @@ in
 
   programs.git = {
     enable = true;
-    userName = "lumirth";
-    userEmail = "65358837+lumirth@users.noreply.github.com";
 
     signing = {
       key = config.sops.secrets."${sshPubSecretName}".path;
@@ -324,26 +330,32 @@ in
       signByDefault = true;
     };
 
-    extraConfig = {
+    settings = {
+      user = {
+        name = "lumirth";
+        email = "65358837+lumirth@users.noreply.github.com";
+      };
+
       # Use SSH for commit signing
-      gpg.format = "ssh";
-      gpg.ssh.allowedSignersFile = allowedSigners;
+      gpg = {
+        format = "ssh";
+        ssh.allowedSignersFile = allowedSigners;
+      };
 
       # Additional Git settings
       init.defaultBranch = "main";
       pull.rebase = true;
       push.autoSetupRemote = true;
-    };
 
-    # Git aliases for common operations
-    aliases = {
-      st = "status";
-      co = "checkout";
-      br = "branch";
-      ci = "commit";
-      unstage = "reset HEAD --";
-      last = "log -1 HEAD";
-      visual = "!gitk";
+      alias = {
+        st = "status";
+        co = "checkout";
+        br = "branch";
+        ci = "commit";
+        unstage = "reset HEAD --";
+        last = "log -1 HEAD";
+        visual = "!gitk";
+      };
     };
   };
 
@@ -351,7 +363,7 @@ in
   # We use sops-nix templates feature to generate the file with the decrypted public key content
   sops.templates."git-allowed-signers" = {
     content = ''
-      ${config.programs.git.userEmail} ${config.sops.placeholder."${sshPubSecretName}"}
+      ${config.programs.git.settings.user.email} ${config.sops.placeholder."${sshPubSecretName}"}
     '';
     path = allowedSigners;
     mode = "0644";

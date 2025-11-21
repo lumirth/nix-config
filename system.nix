@@ -157,7 +157,12 @@
         { app = "/Applications/Obsidian.app"; }
       ];
       persistent-others = [
-        "${config.users.users.${config.system.primaryUser}.home}/Downloads"
+        {
+          folder = {
+            path = "${config.users.users.${config.system.primaryUser}.home}/Downloads";
+            arrangement = "date-added";
+          };
+        }
       ];
       show-recents = false;
       show-process-indicators = true;
