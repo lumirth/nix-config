@@ -99,6 +99,7 @@ in
     starship
     claude-code
     claude-code-acp
+    sshpass
 
     # Fonts
     # Nerd Fonts for terminal and coding
@@ -198,10 +199,10 @@ in
         nfu = "nix flake update";
         d = "docker";
         dc = "docker-compose";
-        ds = "sudo darwin-rebuild switch --flake .#$(hostname -s)";
-        du = "sudo darwin-rebuild switch --flake .#$(hostname -s) --upgrade";
-        hs = "home-manager switch --flake .#${config.home.username}@$(hostname -s)";
-        hu = "home-manager switch --flake .#${config.home.username}@$(hostname -s) --upgrade";
+        ds = "sudo darwin-rebuild switch --flake .#lu-mbp";
+        du = "sudo darwin-rebuild switch --flake .#lu-mbp --upgrade";
+        hs = "home-manager switch --flake .#lu@lu-mbp";
+        hu = "home-manager switch --flake .#lu@lu-mbp --upgrade";
         zshrc = "$EDITOR ~/.zshrc";
         nconfig = "$EDITOR ~/.config/home-manager/home.nix";
       };
