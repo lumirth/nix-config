@@ -100,6 +100,7 @@ in
     claude-code
     claude-code-acp
     sshpass
+    sshfs
 
     # Fonts
     # Nerd Fonts for terminal and coding

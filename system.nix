@@ -262,6 +262,7 @@
       "obsidian"
       "orbstack"
       "thebrowsercompany-dia"
+      "macfuse"
     ];
 
     brews = [ ];
