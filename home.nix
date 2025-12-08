@@ -201,9 +201,9 @@ in
         d = "docker";
         dc = "docker-compose";
         ds = "sudo darwin-rebuild switch --flake .#lu-mbp";
-        du = "sudo darwin-rebuild switch --flake .#lu-mbp --upgrade";
+        du = "nix flake update && sudo darwin-rebuild switch --flake .#lu-mbp";
         hs = "home-manager switch --flake .#lu@lu-mbp";
-        hu = "home-manager switch --flake .#lu@lu-mbp --upgrade";
+        hu = "nix flake update && home-manager switch --flake .#lu@lu-mbp";
         zshrc = "$EDITOR ~/.zshrc";
         nconfig = "$EDITOR ~/.config/home-manager/home.nix";
       };
