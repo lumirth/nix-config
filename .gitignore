@@ -37,10 +37,10 @@ result-*
 # Secrets (just in case)
 *.key
 *.pem
-.infisical.json
 data/rectangle-pro/
 
 tmp/
 
 .kiro/
 .vscode/
+.zed/
