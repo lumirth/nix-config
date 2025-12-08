@@ -86,6 +86,7 @@
   system.primaryUser = "lu";
 
   nixpkgs.hostPlatform = "aarch64-darwin";
+  networking.hostName = "lu-mbp";
 
   # Ensure preferred shell is installed system-wide
   programs.zsh.enable = true;
