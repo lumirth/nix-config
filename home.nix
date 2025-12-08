@@ -200,7 +200,7 @@ in
         nfu = "nix flake update";
         d = "docker";
         dc = "docker-compose";
-        ds = "sudo darwin-rebuild switch --flake .#lu-mbp";
+        ds = "sudo darwin-rebuild switch --flake /Users/lu/.config/nix#lu-mbp";
         du = "nix flake update && sudo darwin-rebuild switch --flake .#lu-mbp";
         hs = "home-manager switch --flake .#lu@lu-mbp";
         hu = "nix flake update && home-manager switch --flake .#lu@lu-mbp";
