@@ -264,6 +264,9 @@
       "orbstack"
       "thebrowsercompany-dia"
       "macfuse"
+      "prismlauncher"
+      "zen"
+      "google-chrome"
     ];
 
     brews = [ ];
