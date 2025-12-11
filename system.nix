@@ -267,6 +267,7 @@
       "prismlauncher"
       "zen"
       "google-chrome"
+      "discord"
     ];
 
     brews = [ ];
