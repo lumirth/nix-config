@@ -56,53 +56,91 @@ in
   # ============================================================================
 
   home.packages = with pkgs; [
-    # Development tools
+    # ==========================================================================
+    # Project Environment Management
+    # ==========================================================================
+    mise # Primary tool for project environments (new projects use mise)
+
+    # Legacy: kept for backward compatibility with existing projects using devenv.nix
+    devenv
+
+    # ==========================================================================
+    # Language Runtimes & Tooling
+    # ==========================================================================
     python3
     pipx
-    vim
-    devenv
-    cachix
+    uv # Modern Python package manager (10-100x faster than pip)
     nodejs_22
+    ruby_3_3 # Current Ruby (replaces ancient system 2.6)
+    go # Go toolchain
+    rustup # Rust toolchain manager
+
+    # ==========================================================================
+    # Build Tools
+    # ==========================================================================
+    cmake # Required for native extensions (Python C-extensions, Node gyp)
+    cachix
+
+    # ==========================================================================
+    # Language Servers (for IDE support)
+    # ==========================================================================
+    nil # Nix LSP
+    nixd # Alternative Nix LSP
+    nodePackages.typescript-language-server # JS/TS LSP
+    pyright # Python LSP
+
+    # ==========================================================================
+    # Editors
+    # ==========================================================================
+    vim
     micro
 
-    # Zsh performance helpers
+    # ==========================================================================
+    # Shell & Terminal
+    # ==========================================================================
     zsh-defer
     zsh-autosuggestions
     zsh-history-substring-search
     zsh-syntax-highlighting
+    starship
 
-    # Nix language servers
-    nil
-    nixd
-
-    # Utilities
+    # ==========================================================================
+    # CLI Utilities
+    # ==========================================================================
     unar # Archive extraction
     jq # JSON processor
     yq # YAML processor
-    eza
-    fd
-    ripgrep
-    bat
+    eza # Modern ls
+    fd # Modern find
+    ripgrep # Modern grep
+    bat # Modern cat
     htop
     tree
     fortune
     wget
     curl
 
-    # Additional packages
+    # ==========================================================================
+    # Cloud & DevOps
+    # ==========================================================================
     bitwarden-cli
     infisical
     cursor-cli
     ghost-cli
     colima
     docker
-    starship
+
+    # ==========================================================================
+    # Coding Tools
+    # ==========================================================================
     claude-code
     claude-code-acp
     sshpass
     sshfs
 
+    # ==========================================================================
     # Fonts
+    # ==========================================================================
     # Nerd Fonts for terminal and coding
     nerd-fonts.jetbrains-mono
     nerd-fonts.fira-code
@@ -200,12 +238,18 @@ in
         nfu = "nix flake update";
         d = "docker";
         dc = "docker-compose";
-        ds = "sudo darwin-rebuild switch --flake /Users/lu/.config/nix#lu-mbp";
-        du = "nix flake update && sudo darwin-rebuild switch --flake .#lu-mbp";
-        hs = "home-manager switch --flake .#lu@lu-mbp";
-        hu = "nix flake update && home-manager switch --flake .#lu@lu-mbp";
-        zshrc = "$EDITOR ~/.zshrc";
-        nconfig = "$EDITOR ~/.config/home-manager/home.nix";
+
+        # Darwin rebuild aliases
+        ds = "sudo darwin-rebuild switch --flake ~/.config/nix#lu-mbp";
+        dbuild = "darwin-rebuild build --flake ~/.config/nix#lu-mbp";
+        dcheck = "nix flake check ~/.config/nix";
+        drollback = "darwin-rebuild rollback";
+        dgens = "darwin-rebuild --list-generations";
+        dsu = "(cd ~/.config/nix && nix flake update && sudo darwin-rebuild switch --flake .#lu-mbp)";
+
+        # Config editing and navigation
+        nconfig = "$EDITOR ~/.config/nix";
+        cnix = "cd ~/.config/nix";
       };
     }
     {
@@ -239,6 +283,9 @@ in
 
         # direnv stays synchronous so project envs load immediately
         eval "$(direnv hook zsh)"
+
+        # mise for language version management (synchronous for immediate availability)
+        eval "$(mise activate zsh)"
 
         if typeset -f zsh-defer >/dev/null; then
           zsh-defer eval "$(zoxide init zsh --cmd cd)"

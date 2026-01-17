@@ -50,7 +50,7 @@ infisical login
 Run the bootstrap script to fetch the Age key from Infisical and save it to the correct location:
 
 ```bash
-~/bin/infisical-bootstrap-sops
+~/.config/nix/bin/infisical-bootstrap-sops
 ```
 
 **What this does:**
@@ -68,7 +68,7 @@ The script uses these defaults, which can be overridden:
 
 Example with custom values:
 ```bash
-INFISICAL_ENVIRONMENT=dev ~/bin/infisical-bootstrap-sops
+INFISICAL_ENVIRONMENT=dev ~/.config/nix/bin/infisical-bootstrap-sops
 ```
 
 ### Step 3: Initial System Build
@@ -223,7 +223,7 @@ Or simply open a new terminal window.
 
 **Solution:** Run the Infisical bootstrap script:
 ```bash
-~/bin/infisical-bootstrap-sops
+~/.config/nix/bin/infisical-bootstrap-sops
 ```
 
 ### Infisical CLI Not Found
@@ -265,10 +265,10 @@ gh auth login -p https -h github.com -w -s admin:public_key,admin:ssh_signing_ke
 
 **Error:** Touch ID prompts don't appear in tmux/screen
 
-**Solution:** Verify the `reattach` parameter is set:
+**Solution:** Verify the `reattach` parameter is set in `system.nix`:
 ```bash
 # Check the configuration
-grep -r "reattach" ~/.config/nix/darwin/defaults.nix
+grep -r "reattach" ~/.config/nix/system.nix
 
 # Should show: reattach = true;
 ```
