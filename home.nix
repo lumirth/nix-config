@@ -156,11 +156,11 @@ in
         nconfig = "$EDITOR ~/.config/nix";
         cnix = "cd ~/.config/nix";
 
-        # Quick add workflows
-        nadd = "$EDITOR ~/.config/nix/modules/packages.nix"; # Add Nix packages
-        badd = "$EDITOR ~/.config/nix/modules/homebrew.nix"; # Add Homebrew casks
-        mnadd = "micro ~/.config/nix/modules/packages.nix"; # Quick-add Nix packages (micro)
-        mbadd = "micro ~/.config/nix/modules/homebrew.nix"; # Quick-add Homebrew casks (micro)
+        # Config editing shortcuts
+        pkgs = "$EDITOR ~/.config/nix/modules/packages.nix";
+        brews = "$EDITOR ~/.config/nix/modules/homebrew.nix";
+        mpkgs = "micro ~/.config/nix/modules/packages.nix";
+        mbrews = "micro ~/.config/nix/modules/homebrew.nix";
 
         # Edit config and rebuild when done
         de = "(cd ~/.config/nix && $EDITOR . && ds)";
