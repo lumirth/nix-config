@@ -109,6 +109,7 @@ in
     # CLI Utilities
     # ==========================================================================
     comma # Run any nixpkgs package with ", foo" (e.g., , cowsay "hello")
+    nix-index # Database for comma - run "nix-index" once to build, then ", foo" works
     unar # Archive extraction
     jq # JSON processor
     yq # YAML processor
