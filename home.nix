@@ -71,6 +71,7 @@ in
     pipx
     uv # Modern Python package manager (10-100x faster than pip)
     nodejs_22
+    nodePackages.pnpm # Faster npm alternative, disk-efficient
     ruby_3_3 # Current Ruby (replaces ancient system 2.6)
     go # Go toolchain
     rustup # Rust toolchain manager
@@ -107,6 +108,7 @@ in
     # ==========================================================================
     # CLI Utilities
     # ==========================================================================
+    comma # Run any nixpkgs package with ", foo" (e.g., , cowsay "hello")
     unar # Archive extraction
     jq # JSON processor
     yq # YAML processor
@@ -238,6 +240,11 @@ in
         nfu = "nix flake update";
         d = "docker";
         dc = "docker-compose";
+
+        # Quick nix package runners (alternative to comma)
+        nr = "nix run nixpkgs#";
+        ns = "nix shell nixpkgs#";
+        nsr = "nix search nixpkgs";
 
         # Darwin rebuild aliases
         ds = "sudo darwin-rebuild switch --flake ~/.config/nix#lu-mbp";

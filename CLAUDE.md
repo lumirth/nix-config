@@ -63,12 +63,53 @@ nix shell nixpkgs#sops -c sops secrets/ssh/secrets.yaml
 ### Temporary Package Use
 
 ```bash
-# Run a package without installing
-nix shell nixpkgs#PACKAGE_NAME
+# Preferred: Use comma for quick one-off runs
+, cowsay "hello"       # Runs any nixpkgs package instantly
+, htop                 # No need to remember full nix run syntax
 
-# Run a package once
-nix run nixpkgs#PACKAGE_NAME
+# Alternative: Explicit nix commands
+nix run nixpkgs#cowsay -- "hello"
+nix shell nixpkgs#htop
+
+# Aliases for convenience
+nr cowsay -- "hello"   # Short for nix run nixpkgs#
+ns htop                # Short for nix shell nixpkgs#
+nsr ripgrep            # Short for nix search nixpkgs
 ```
+
+## Installing Packages
+
+### Permanent (Declarative)
+
+| Type | Where | Example |
+|------|-------|---------|
+| CLI tool | `home.nix` → `home.packages` | `ripgrep`, `jq`, `htop` |
+| Node.js tool | `home.nix` → `nodePackages.X` | `nodePackages.prettier` |
+| GUI app | `system.nix` → `homebrew.casks` | `"raycast"` |
+| Mac App Store | `system.nix` → `homebrew.masApps` | `"Xcode" = 497799835` |
+
+### Temporary (Ad-hoc)
+
+| Method | Command | When to Use |
+|--------|---------|-------------|
+| comma | `, cowsay "hi"` | **Preferred** - quick one-off |
+| nr alias | `nr cowsay -- "hi"` | Alternative to comma |
+| nix run | `nix run nixpkgs#cowsay` | Explicit, verbose |
+| nix shell | `nix shell nixpkgs#htop` | Need interactive shell with tool |
+
+### Project-local
+
+| Type | Command | Notes |
+|------|---------|-------|
+| npm deps | `npm install` | Creates node_modules/ |
+| pnpm deps | `pnpm install` | Creates node_modules/ (symlinked, disk-efficient) |
+| Python deps | `uv pip install` or `pip install` | Use inside venv |
+
+### DON'T USE (not tracked, may break)
+
+- `npm install -g foo` - Not declarative, may conflict
+- `pnpm add -g foo` - Not tracked in config
+- `pip install foo` (outside venv) - Pollutes global Python
 
 ## Architecture
 
