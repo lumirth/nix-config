@@ -39,6 +39,11 @@
       url = "github:numtide/treefmt-nix";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+
+    nix-index-database = {
+      url = "github:nix-community/nix-index-database";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   outputs =
@@ -109,6 +114,7 @@
           inputs.determinate.darwinModules.default
           inputs.nix-homebrew.darwinModules.nix-homebrew
           inputs.home-manager.darwinModules.home-manager
+          inputs.nix-index-database.darwinModules.nix-index
           ./system.nix
           {
             # Apply centralized nixpkgs configuration

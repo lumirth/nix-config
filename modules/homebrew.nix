@@ -2,6 +2,8 @@
 {
   homebrew = {
     enable = true;
+    onActivation.autoUpdate = true;
+    onActivation.upgrade = true;
     onActivation.cleanup = "uninstall";
 
     casks = [
@@ -13,7 +15,7 @@
       "keka"
       "iterm2"
       "shottr"
-      "tailscale"
+      "tailscale-app"
       "zotero"
       "alienator88-sentinel"
       "pearcleaner"

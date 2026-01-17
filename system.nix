@@ -88,6 +88,9 @@
     cores = 0;
   };
 
+  # Enable comma wrapper from nix-index-database
+  programs.nix-index-database.comma.enable = true;
+
   # ============================================================================
   # SYSTEM CONFIGURATION
   # ============================================================================
@@ -147,7 +150,7 @@
 
     screencapture = {
       disable-shadow = true;
-      location = "~/Pictures/Screenshots";
+      location = "/Users/lu/Pictures/Screenshots";
       show-thumbnail = false;
       type = "png";
     };

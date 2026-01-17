@@ -159,6 +159,8 @@ in
         # Quick add workflows
         nadd = "$EDITOR ~/.config/nix/modules/packages.nix"; # Add Nix packages
         badd = "$EDITOR ~/.config/nix/modules/homebrew.nix"; # Add Homebrew casks
+        mnadd = "micro ~/.config/nix/modules/packages.nix"; # Quick-add Nix packages (micro)
+        mbadd = "micro ~/.config/nix/modules/homebrew.nix"; # Quick-add Homebrew casks (micro)
 
         # Edit config and rebuild when done
         de = "(cd ~/.config/nix && $EDITOR . && ds)";
@@ -265,6 +267,9 @@ in
     fileWidgetCommand = "fd --type f --hidden --exclude .git";
     changeDirWidgetCommand = "fd --type d";
   };
+
+  # nix-index: command-not-found functionality is provided by nix-index-database darwin module
+  # No need to configure here - the darwin module handles database symlinks and command-not-found
 
   programs.starship = {
     enable = true;
