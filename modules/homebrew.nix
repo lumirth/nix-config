@@ -49,6 +49,9 @@
       "google-chrome"
       "discord"
       "antigravity"
+      "raspberry-pi-imager"
+      "wispr-flow"
+      "telegram"
     ];
 
     brews = [ ];
