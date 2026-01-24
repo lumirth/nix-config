@@ -117,17 +117,12 @@ in
         z = "zoxide query";
         clip = "pbcopy";
         paste = "pbpaste";
-        ls = "eza --group-directories-first --icons";
         la = "ls -a";
-        ll = "ls --git -lh";
-        tree = "eza --tree --icons";
+        ll = "ls -lh";
         lt = "tree -L 2 -I 'cache|log|logs|node_modules|vendor'";
         py = "python3";
         pip = "python3 -m pip";
-        cat = "bat --style=plain --paging=never";
         nano = "micro";
-        grep = "rg --hidden --smart-case";
-        find = "fd --hidden";
         g = "git";
         gst = "git status";
         gco = "git checkout";
