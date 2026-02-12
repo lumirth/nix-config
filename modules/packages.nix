@@ -66,6 +66,7 @@
     fortune
     wget
     curl
+    shellcheck # Shell script linter
 
     # ==========================================================================
     # Cloud & DevOps

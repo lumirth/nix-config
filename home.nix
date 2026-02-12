@@ -131,7 +131,7 @@ in
         ncg = "nix-collect-garbage -d";
         nfu = "nix flake update";
         d = "docker";
-        dc = "docker-compose";
+        dc = "docker compose";
 
         # Quick nix package runners (alternative to comma)
         nr = "nix run nixpkgs#";
