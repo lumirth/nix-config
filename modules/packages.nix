@@ -25,6 +25,7 @@
     # Build Tools
     # ==========================================================================
     cmake # Required for native extensions (Python C-extensions, Node gyp)
+    cocoapods # iOS dependency manager (required for Expo/React Native iOS builds)
     cachix
 
     # ==========================================================================
