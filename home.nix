@@ -165,6 +165,9 @@ in
     }
     {
       initContent = ''
+        # Raise file descriptor limit for Nix evaluations and builds
+        ulimit -n 65536 2>/dev/null
+
         # Enable for startup profiling: uncomment the next line, open a login shell, then run `zprof`
         # zmodload zsh/zprof
 

@@ -123,6 +123,21 @@
   };
 
   # ============================================================================
+  # FILE DESCRIPTOR LIMITS
+  # ============================================================================
+
+  # Raise macOS file descriptor limits to prevent "Too many open files" errors
+  # during Nix evaluations and builds. The default soft limit (256) is far too
+  # low for flakes with many inputs.
+  launchd.daemons.maxfiles = {
+    command = "/bin/launchctl limit maxfiles 65536 524288";
+    serviceConfig = {
+      Label = "limit.maxfiles";
+      RunAtLoad = true;
+    };
+  };
+
+  # ============================================================================
   # MACOS SYSTEM DEFAULTS
   # ============================================================================
 
