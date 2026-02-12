@@ -94,7 +94,6 @@ in
         fi
       '';
       setOptions = [
-        "NO_INTERACTIVE_COMMENTS"
         "NO_NOMATCH"
       ];
 
@@ -102,7 +101,7 @@ in
         size = 10000;
         save = 10000;
         path = "${config.home.homeDirectory}/.zsh_history";
-        share = true;
+        share = false;
         extended = true;
         ignoreSpace = true;
         ignoreDups = true;
@@ -200,7 +199,7 @@ in
         eval "$(mise activate zsh)"
 
         if typeset -f zsh-defer >/dev/null; then
-          zsh-defer eval "$(zoxide init zsh --cmd cd)"
+          zsh-defer eval "$(zoxide init zsh)"
           zsh-defer eval "$(atuin init zsh --disable-up-arrow)"
           zsh-defer eval "$(fzf --zsh)"
 
@@ -208,7 +207,7 @@ in
           zsh-defer source ${pkgs.zsh-syntax-highlighting}/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
           zsh-defer eval 'source ${pkgs.zsh-history-substring-search}/share/zsh-history-substring-search/zsh-history-substring-search.zsh; bindkey "^[[A" history-substring-search-up; bindkey "^[OA" history-substring-search-up; bindkey "^[[B" history-substring-search-down; bindkey "^[OB" history-substring-search-down'
         else
-          eval "$(zoxide init zsh --cmd cd)"
+          eval "$(zoxide init zsh)"
           eval "$(atuin init zsh --disable-up-arrow)"
           eval "$(fzf --zsh)"
 
@@ -235,7 +234,6 @@ in
   programs.zoxide = {
     enable = true;
     enableZshIntegration = false;
-    options = [ "--cmd cd" ];
   };
 
   programs.atuin = {

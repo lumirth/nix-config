@@ -65,7 +65,6 @@
 
             # CLI Tools with unfree licenses
             "cursor-cli" # Cursor CLI tool - proprietary license
-            "claude-code" # Anthropic's agentic coding tool - proprietary license
           ];
       };
 

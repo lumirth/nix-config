@@ -37,6 +37,8 @@
       "ollama-app"
       "lm-studio"
       "cursor"
+      "claude"
+      "claude-code"
       "netnewswire"
       "jetbrains-toolbox"
       "android-studio"
