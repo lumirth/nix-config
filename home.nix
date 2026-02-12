@@ -139,12 +139,12 @@ in
         nsr = "nix search nixpkgs";
 
         # Darwin rebuild aliases
-        ds = "sudo darwin-rebuild switch --flake ~/.config/nix#lu-mbp";
+        ds = "sudo $(which darwin-rebuild) switch --flake ~/.config/nix#lu-mbp";
         dbuild = "darwin-rebuild build --flake ~/.config/nix#lu-mbp";
         dcheck = "nix flake check ~/.config/nix";
         drollback = "darwin-rebuild rollback";
         dgens = "darwin-rebuild --list-generations";
-        dsu = "(cd ~/.config/nix && nix flake update && sudo darwin-rebuild switch --flake .#lu-mbp)";
+        dsu = "(cd ~/.config/nix && nix flake update && sudo $(which darwin-rebuild) switch --flake .#lu-mbp)";
 
         # Config editing and navigation
         nconfig = "$EDITOR ~/.config/nix";
