@@ -56,7 +56,11 @@
       "telegram"
     ];
 
-    brews = [ ];
+    brews = [
+      "supabase"
+      "deno"
+      "libpq"
+    ];
 
     masApps = {
       "CotEditor" = 1024640650;

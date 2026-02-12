@@ -329,6 +329,11 @@ in
     };
   };
 
+  # Homebrew keg-only paths (not linked into /opt/homebrew/bin)
+  home.sessionPath = [
+    "/opt/homebrew/opt/libpq/bin" # psql, pg_dump, etc.
+  ];
+
   # Environment variables
   home.sessionVariables = {
     EDITOR = "zed";
