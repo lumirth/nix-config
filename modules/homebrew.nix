@@ -60,6 +60,7 @@
       "supabase"
       "deno"
       "libpq"
+      "pnpm"
     ];
 
     masApps = {
