@@ -164,6 +164,11 @@ in
       };
     }
     {
+      loginExtra = ''
+        # Make mise shims available in login/non-interactive shells too.
+        eval "$(mise activate zsh --shims)"
+      '';
+
       initContent = ''
         # Raise file descriptor limit for Nix evaluations and builds
         ulimit -n 65536 2>/dev/null
