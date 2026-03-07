@@ -139,12 +139,15 @@ in
         nsr = "nix search nixpkgs";
 
         # Darwin rebuild aliases
-        ds = "sudo $(which darwin-rebuild) switch --flake ~/.config/nix#lu-mbp";
-        dbuild = "darwin-rebuild build --flake ~/.config/nix#lu-mbp";
+        # Use /nix/var/nix/profiles/system/sw/bin/darwin-rebuild — this path is
+        # stable across reboots, unlike /run/current-system which lives in a
+        # volatile tmpdir that macOS can wipe.
+        ds = "sudo /nix/var/nix/profiles/system/sw/bin/darwin-rebuild switch --flake ~/.config/nix#lu-mbp";
+        dbuild = "/nix/var/nix/profiles/system/sw/bin/darwin-rebuild build --flake ~/.config/nix#lu-mbp";
         dcheck = "nix flake check ~/.config/nix";
-        drollback = "darwin-rebuild rollback";
-        dgens = "darwin-rebuild --list-generations";
-        dsu = "(cd ~/.config/nix && nix flake update && sudo $(which darwin-rebuild) switch --flake .#lu-mbp)";
+        drollback = "/nix/var/nix/profiles/system/sw/bin/darwin-rebuild rollback";
+        dgens = "/nix/var/nix/profiles/system/sw/bin/darwin-rebuild --list-generations";
+        dsu = "(cd ~/.config/nix && nix flake update && sudo /nix/var/nix/profiles/system/sw/bin/darwin-rebuild switch --flake .#lu-mbp)";
 
         # Config editing and navigation
         nconfig = "$EDITOR ~/.config/nix";
@@ -160,7 +163,7 @@ in
         de = "(cd ~/.config/nix && $EDITOR . && ds)";
 
         # Dry-run preview
-        dsd = "darwin-rebuild build --dry-run --flake ~/.config/nix#lu-mbp";
+        dsd = "/nix/var/nix/profiles/system/sw/bin/darwin-rebuild build --dry-run --flake ~/.config/nix#lu-mbp";
       };
     }
     {
