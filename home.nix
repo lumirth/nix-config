@@ -339,6 +339,7 @@ in
 
   # Homebrew keg-only paths (not linked into /opt/homebrew/bin)
   home.sessionPath = [
+    "$HOME/.local/share/mise/shims" # mise-managed tool shims for all shells
     "/opt/homebrew/opt/libpq/bin" # psql, pg_dump, etc.
   ];
 
