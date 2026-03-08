@@ -122,6 +122,21 @@ mise install
 node --version  # Uses project-specific version
 ```
 
+## Codex Troubleshooting
+
+If Codex says a `mise`-managed tool like `deno` is not installed, verify which layer is failing before changing the project:
+
+1. `mise which deno`
+2. `mise exec -- deno --version`
+3. `zsh -lc 'which deno'`
+
+If `mise exec` works but plain Codex commands still say `deno not found`, the issue is usually shell initialization, not installation.
+
+- In Codex project setup, use `mise install`, not `mise activate zsh`. Activation only affects the current shell process.
+- For global shell availability, expose shims through Home Manager with `home.sessionPath = [ "$HOME/.local/share/mise/shims" ... ]`.
+- Codex can keep using a stale shell snapshot after a Home Manager rebuild. A new thread may still inherit that stale environment.
+- If that happens, fully quit and relaunch the Codex app so it captures a fresh shell snapshot.
+
 ## Lockfile
 
 Mise creates a `mise.lock` file with exact versions. **Commit this file** to ensure everyone on the team gets identical versions:
@@ -301,4 +316,3 @@ If you prefer Nix over Docker for services:
 ```
 
 With a `flake.nix` that defines those services. But docker-compose is simpler for most cases.
-
